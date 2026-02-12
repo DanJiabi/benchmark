@@ -1,0 +1,112 @@
+# Byte-compiled / optimized / DLLs
+*.py[cod]
+*.so
+*.pyd
+*.pyo
+
+# Distribution / packaging
+*.whl
+*.egg
+*.egg-info
+dist/
+build/
+eggs/
+eggs-info/
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+*.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+.pytest_cache/
+*.cover
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+staticfiles/
+
+# MyPy
+*.mypy
+*.ipynb
+
+# Jupyter Notebook
+*.ipynb
+*.ipynb_checkpoints
+
+# Pycharm
+.idea/
+.sublime-project/
+.sublime-workspace/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.venv/
+ENV/
+env/
+venv/
+
+# MacOS
+.DS_Store
+.AppleDouble
+.AppleDB
+.DS_Store?
+._*
+.Spotlight-V100
+.Spotlight-V100
+.Trashes
+.Thumbs.db
+
+# Model weights (already cached)
+models_cache/*.pt
+models_cache/*.pth
+models_cache/*.onnx
+models_cache/*.engine
+
+# Model weights in root directory
+*.pt
+*.pth
+
+# Test results
+outputs/results/*.json
+outputs/results/*.csv
+outputs/logs/*.log
+outputs/figures/*.png
+
+# Cache and temporary files
+.cache/
+*.cache
+*.log
+*.out
+*.err
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+*.project
+
+# Downloaded model files
+download_*.py

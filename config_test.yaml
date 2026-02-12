@@ -1,0 +1,13 @@
+dataset:
+  path: ~/raw/COCO
+  split: val2017
+  annotations: annotations/instances_val2017.json
+
+models:
+  - name: yolov8n
+    framework: ultralytics
+    weights: yolov8n.pt
+    url: https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n.pt
+
+test:
+  max_images: 100
