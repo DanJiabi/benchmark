@@ -150,12 +150,44 @@ pip install -e .                        # 以可编辑模式安装包
 
 ## Git 工作流程
 
-- 从 main/master 创建功能分支
-- 编写描述性分支名称（例如 `feature/add-authentication`）
-- 推送前拉取最新更改
-- 使用描述性 PR 标题和描述
-- 合并前请求代码审查
-- 先在本地解决合并冲突
+### 提交消息格式
+- 遵循 Conventional Commits 格式：`type: subject`
+- 类型：`init`, `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+- 示例：`feat: 添加 yolov10 模型支持`
+
+### 基本操作
+```bash
+# 查看状态
+git status
+
+# 添加文件
+git add .
+git add <file>
+
+# 提交更改
+git commit -m "type: description"
+
+# 查看日志
+git log --oneline
+
+# 创建功能分支
+git checkout -b feature/add-model
+
+# 合并到主分支
+git checkout main
+git merge feature/add-model
+```
+
+### .gitignore 配置
+- 根目录：忽略 `*.pt` 和 `*.pth`
+- models_cache/：忽略所有模型文件
+- outputs/：忽略结果和日志文件
+- 使用 `!models_cache/` 排除目录但允许其他
+
+### 远程仓库
+- 当前分支基于 `origin/main`，但上游已消失
+- 使用 `git branch --unset-upstream` 修复
+- 推送前确保远程仓库存在
 
 ## 常见运行问题
 
