@@ -11,8 +11,9 @@ class Detection:
 
 
 class BaseModel(ABC):
-    def __init__(self, device: str = "auto"):
+    def __init__(self, device: str = "auto", conf_threshold: float = 0.001):
         self.device = self._get_device(device)
+        self.conf_threshold = conf_threshold
         self.model = None
         self.model_info = {}
 

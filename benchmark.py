@@ -1,9 +1,9 @@
 import argparse
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
-from src.models.base import BaseModel
-from src.models.yolov8 import YOLOv8, YOLOv11
+from src.models.base import Detection
+from src.models.yolov8 import YOLOv8
 from src.models.yolov9 import YOLOv9, YOLOv10
 from src.models.rt_detr import RTDETR
 from src.models.faster_rcnn import FasterRCNN
@@ -15,18 +15,73 @@ from src.utils.visualization import (
     plot_fps_vs_map,
     plot_model_size_vs_performance,
     generate_results_table,
-    save_results_table,
 )
+
+import cv2
+import numpy as np
+from tqdm import tqdm
 
 
 MODEL_REGISTRY = {
     "yolov8": YOLOv8,
     "yolov9": YOLOv9,
     "yolov10": YOLOv10,
-    "yolov11": YOLOv11,
     "rtdetr": RTDETR,
     "faster_rcnn": FasterRCNN,
 }
+
+
+def save_detection_visualization(
+    image: np.ndarray,
+    detections: List[Detection],
+    class_names: Dict[int, str],
+    output_path: Path,
+    max_boxes: int = 10,
+):
+    """保存检测框可视化图片"""
+    img_draw = image.copy()
+    count = 0
+
+    for det in detections[:max_boxes]:
+        bbox = det.bbox
+        conf = det.confidence
+        cls_id = det.class_id
+
+        x1, y1, x2, y2 = map(int, bbox[:4])
+
+        h, w = img_draw.shape[:2]
+        if not (0 <= x1 < w and 0 <= y1 < h and 0 <= x2 < w and 0 <= y2 < h):
+            continue
+
+        class_name = class_names.get(cls_id, f"cls_{cls_id}")
+
+        cv2.rectangle(img_draw, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+        label = f"{class_name}: {conf:.2f}"
+        label_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)[0]
+
+        cv2.rectangle(
+            img_draw,
+            (x1, y1 - label_size[1] - 5),
+            (x1 + label_size[0], y1),
+            (0, 0, 0),
+            -1,
+        )
+
+        cv2.putText(
+            img_draw,
+            label,
+            (x1, y1 - 3),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 255, 255),
+            1,
+        )
+
+        count += 1
+
+    cv2.imwrite(str(output_path), img_draw)
+    return count
 
 
 def run_single_model(
@@ -34,8 +89,12 @@ def run_single_model(
     dataset: COCOInferenceDataset,
     coco_metrics_calculator: COCOMetrics,
     logger,
-    max_images: int = None,
-) -> Dict[str, Any]:
+    max_images: Optional[int] = None,
+    conf_threshold: float = 0.001,
+    visualize: bool = False,
+    vis_dir: Optional[Path] = None,
+    num_viz_images: int = 10,
+) -> Optional[Dict[str, Any]]:
     model_name = model_config["name"]
     framework = model_config["framework"]
     weights_file = model_config["weights"]
@@ -55,21 +114,44 @@ def run_single_model(
 
     model_class = MODEL_REGISTRY.get(model_type_key)
 
-    model = model_class(device="auto")
+    if model_class is None:
+        logger.error(f"未找到模型类: {model_type_key}")
+        return None
 
-    weights_path = Path("models_cache") / weights_file
-    if weights_url and not weights_path.exists():
-        logger.info(f"下载模型权重: {weights_url}")
-        download_model_weights(weights_url, weights_path)
+    model = model_class(device="auto", conf_threshold=conf_threshold)
 
-    logger.info(f"加载模型权重: {weights_path}")
-    model.load_model(str(weights_path))
+    weights_path = None
+    if weights_file:
+        weights_path = Path("models_cache") / weights_file
+        if weights_url and not weights_path.exists():
+            logger.info(f"下载模型权重: {weights_url}")
+            download_model_weights(weights_url, weights_path)
+
+    logger.info(
+        f"加载模型权重: {weights_path if weights_path else '使用内置预训练权重'}"
+    )
+
+    try:
+        model.load_model(str(weights_path) if weights_path else None)
+    except FileNotFoundError:
+        logger.error(f"❌ 模型文件不存在: {weights_path}")
+        logger.error("   请检查文件路径或先下载模型权重")
+        return None
+    except Exception as e:
+        logger.error(f"❌ 模型加载失败: {e}")
+        logger.error(f"   模型: {model_name}")
+        logger.error(f"   权重文件: {weights_path}")
+        return None
 
     model_info = model.get_model_info()
     logger.info(f"模型信息: {model_info}")
 
     logger.info("模型预热...")
-    model.warmup()
+    try:
+        model.warmup()
+    except Exception as e:
+        logger.error(f"❌ 模型预热失败: {e}")
+        logger.warning("   继续执行，但首次推理可能较慢")
 
     all_detections = {}
     perf_metrics = PerformanceMetrics()
@@ -77,31 +159,76 @@ def run_single_model(
     total_images = max_images if max_images else len(dataset)
     logger.info(f"将处理 {total_images} 张图片")
 
-    for idx, (image_id, image) in enumerate(dataset):
+    image_iterator = enumerate(dataset)
+    if total_images <= len(dataset):
+        image_iterator = tqdm(
+            image_iterator,
+            total=total_images,
+            desc=f"{model_name} 推理",
+            unit="张",
+            leave=False,
+        )
+
+    for idx, (image_id, image) in image_iterator:
         if idx >= total_images:
             break
 
-        if idx % 100 == 0:
-            logger.info(f"处理进度: {idx}/{total_images}")
+        try:
+            start_time = perf_metrics.start_timer()
+            detections = model.predict(image, conf_threshold)
+            inference_time = perf_metrics.end_timer(start_time)
 
-        start_time = perf_metrics.start_timer()
-        detections = model.predict(image)
-        inference_time = perf_metrics.end_timer(start_time)
+            perf_metrics.add_inference_time(inference_time)
+            all_detections[image_id] = detections
 
-        perf_metrics.add_inference_time(inference_time)
-        all_detections[image_id] = detections
+        except Exception as e:
+            logger.error(
+                f"❌ 推理失败 (图片 {idx}/{total_images}, ID: {image_id}): {e}"
+            )
+            logger.warning("   跳过此图片，继续处理下一张")
+            continue
+
+        if visualize and vis_dir and idx < num_viz_images and len(detections) > 0:
+            viz_filename = f"{model_name}_vis_{idx:04d}_{image_id:012d}.jpg"
+            viz_path = vis_dir / viz_filename
+
+            class_names = model_info.get("model_yaml", {}).get("names", {})
+            if not class_names and hasattr(model.model, "names"):
+                class_names = model.model.names
+
+            try:
+                num_boxes = save_detection_visualization(
+                    image, detections, class_names, viz_path
+                )
+                if idx == 0 or idx % 5 == 0:
+                    logger.info(
+                        f"    已保存可视化: {viz_filename} ({num_boxes} 个检测框)"
+                    )
+            except Exception as e:
+                logger.error(f"❌ 可视化失败: {viz_filename}")
+                logger.error(f"   错误: {e}")
 
     logger.info("生成预测结果...")
-    predictions = coco_metrics_calculator.predictions_to_coco_format(all_detections)
+    try:
+        predictions = coco_metrics_calculator.predictions_to_coco_format(all_detections)
+    except Exception as e:
+        logger.error(f"❌ 生成预测结果失败: {e}")
+        logger.error(f"   检测数量: {len(all_detections)}")
+        return None
 
     logger.info("计算 COCO 指标...")
-    coco_metrics = coco_metrics_calculator.compute_metrics(predictions)
+    try:
+        coco_metrics = coco_metrics_calculator.compute_metrics(predictions)
+    except Exception as e:
+        logger.error(f"❌ 计算 COCO 指标失败: {e}")
+        logger.error("   请检查标注文件路径和格式")
+        return None
 
     performance_stats = perf_metrics.compute_performance_stats()
 
     logger.info(f"{model_name} 指标:")
-    logger.info(f"  mAP@0.5: {coco_metrics['mAP50']:.4f}")
-    logger.info(f"  mAP@0.5:0.95: {coco_metrics['mAP50-95']:.4f}")
+    logger.info(f"  AP@0.50: {coco_metrics['AP@0.50']:.4f}")
+    logger.info(f"  AP@0.50:0.95: {coco_metrics['AP@0.50:0.95']:.4f}")
     logger.info(f"  FPS: {performance_stats['fps']:.2f}")
 
     result = {
@@ -125,11 +252,37 @@ def main():
     parser.add_argument(
         "--output-dir", type=str, default="outputs/results", help="输出目录"
     )
+    parser.add_argument(
+        "--visualize",
+        action="store_true",
+        help="保存检测框可视化图片",
+    )
+    parser.add_argument(
+        "--num-viz-images",
+        type=int,
+        default=10,
+        help="可视化图片数量（默认: 10）",
+    )
+    parser.add_argument(
+        "--conf-threshold",
+        type=float,
+        default=None,
+        help="置信度阈值（默认: 使用配置文件中的值）",
+    )
 
     args = parser.parse_args()
 
-    config = Config(args.config)
-    logger = setup_logger(config)
+    try:
+        config = Config(args.config)
+        logger = setup_logger(config)
+    except FileNotFoundError:
+        print(f"❌ 配置文件不存在: {args.config}")
+        print("   请检查配置文件路径")
+        return
+    except Exception as e:
+        print(f"❌ 配置文件加载失败: {e}")
+        print(f"   文件: {args.config}")
+        return
 
     logger.info("=" * 60)
     logger.info("目标检测模型性能基准测试")
@@ -137,6 +290,12 @@ def main():
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    vis_dir = None
+    if args.visualize:
+        vis_dir = output_dir.parent / "visualizations"
+        vis_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"可视化目录: {vis_dir}")
 
     dataset_config = config.get_dataset_config()
     dataset_path = dataset_config["path"]
@@ -155,6 +314,13 @@ def main():
     eval_config = config.get_evaluation_config()
     test_config = config.config.get("test", {})
     max_images = test_config.get("max_images")
+
+    conf_threshold = args.conf_threshold
+    if conf_threshold is None:
+        conf_threshold = eval_config.get("conf_threshold", 0.001)
+        logger.info(f"使用配置文件中的置信度阈值: {conf_threshold}")
+    else:
+        logger.info(f"使用命令行指定的置信度阈值: {conf_threshold}")
 
     models_to_test = []
     if args.all:
@@ -181,9 +347,17 @@ def main():
 
     aggregator = MetricsAggregator()
 
-    for model_config in models_to_test:
+    for model_config in tqdm(models_to_test, desc="模型进度", unit="模型"):
         result = run_single_model(
-            model_config, dataset, coco_metrics_calculator, logger, max_images
+            model_config,
+            dataset,
+            coco_metrics_calculator,
+            logger,
+            max_images,
+            conf_threshold,
+            args.visualize,
+            vis_dir,
+            args.num_viz_images,
         )
 
         if result:
@@ -197,9 +371,13 @@ def main():
             import json
 
             result_file = output_dir / f"{result['model_name']}_result.json"
-            with open(result_file, "w") as f:
-                json.dump(result, f, indent=2)
-            logger.info(f"结果已保存: {result_file}")
+            try:
+                with open(result_file, "w") as f:
+                    json.dump(result, f, indent=2)
+                logger.info(f"结果已保存: {result_file}")
+            except Exception as e:
+                logger.error(f"❌ 保存结果文件失败: {result_file}")
+                logger.error(f"   错误: {e}")
 
     logger.info("=" * 60)
     logger.info("生成汇总报告...")
@@ -231,20 +409,31 @@ def main():
     figures_dir = output_dir.parent / "figures"
     figures_dir.mkdir(parents=True, exist_ok=True)
 
-    plot_metrics_comparison(
-        all_results,
-        ["mAP50", "mAP50-95", "fps"],
-        str(figures_dir / "metrics_comparison.png"),
-    )
-    logger.info(f"指标对比图已保存: {figures_dir / 'metrics_comparison.png'}")
+    try:
+        plot_metrics_comparison(
+            all_results,
+            ["AP@0.50", "AP@0.50:0.95", "fps"],
+            str(figures_dir / "metrics_comparison.png"),
+        )
+        logger.info(f"指标对比图已保存: {figures_dir / 'metrics_comparison.png'}")
+    except Exception as e:
+        logger.error(f"❌ 生成指标对比图失败: {e}")
 
-    plot_fps_vs_map(all_results, str(figures_dir / "fps_vs_map.png"))
-    logger.info(f"FPS vs mAP 图已保存: {figures_dir / 'fps_vs_map.png'}")
+    try:
+        plot_fps_vs_map(all_results, str(figures_dir / "fps_vs_map.png"))
+        logger.info(f"FPS vs mAP 图已保存: {figures_dir / 'fps_vs_map.png'}")
+    except Exception as e:
+        logger.error(f"❌ 生成 FPS vs mAP 图失败: {e}")
 
-    plot_model_size_vs_performance(
-        all_results, str(figures_dir / "size_vs_performance.png")
-    )
-    logger.info(f"模型大小 vs 性能图已保存: {figures_dir / 'size_vs_performance.png'}")
+    try:
+        plot_model_size_vs_performance(
+            all_results, str(figures_dir / "size_vs_performance.png")
+        )
+        logger.info(
+            f"模型大小 vs 性能图已保存: {figures_dir / 'size_vs_performance.png'}"
+        )
+    except Exception as e:
+        logger.error(f"❌ 生成模型大小 vs 性能图失败: {e}")
 
     logger.info("=" * 60)
     logger.info("基准测试完成！")

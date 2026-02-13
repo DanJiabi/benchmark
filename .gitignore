@@ -76,6 +76,7 @@ venv/
 .Thumbs.db
 
 # Model weights (already cached)
+models_cache/
 models_cache/*.pt
 models_cache/*.pth
 models_cache/*.onnx
@@ -103,10 +104,10 @@ outputs/figures/*.png
 *.temp
 *.bak
 *.swp
-*.swo
-*.sublime-workspace
-*.sublime-project
-*.project
+ *.swo
+ *.sublime-workspace
+ *.sublime-project
+ *.project
 
-# Downloaded model files
-download_*.py
+# Output files and directories
+out*

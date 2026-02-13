@@ -12,6 +12,10 @@ models:
     framework: ultralytics
     weights: yolov8s.pt
     url: https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s.pt
+  - name: yolov8m
+    framework: ultralytics
+    weights: yolov8m.pt
+    url: https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8m.pt
   - name: yolov8l
     framework: ultralytics
     weights: yolov8l.pt
@@ -20,14 +24,68 @@ models:
     framework: ultralytics
     weights: yolov8x.pt
     url: https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8x.pt
-  # Note: yolov8m.pt is skipped due to download issues
+  - name: yolov9t
+    framework: ultralytics
+    weights: yolov9t.pt
+    url: https://github.com/ultralytics/assets/releases/download/v0.1.0/yolov9t.pt
+  - name: yolov9s
+    framework: ultralytics
+    weights: yolov9s.pt
+    url: https://github.com/ultralytics/assets/releases/download/v0.1.0/yolov9s.pt
+  - name: yolov9m
+    framework: ultralytics
+    weights: yolov9m.pt
+    url: https://github.com/ultralytics/assets/releases/download/v0.1.0/yolov9m.pt
+  - name: yolov10n
+    framework: ultralytics
+    weights: yolov10n.pt
+    url: https://github.com/ultralytics/assets/releases/download/v0.1.0/yolov10n.pt
+  - name: yolov10s
+    framework: ultralytics
+    weights: yolov10s.pt
+    url: https://github.com/ultralytics/assets/releases/download/v0.1.0/yolov10s.pt
+  - name: yolov10n
+    framework: ultralytics
+    weights: yolov10n.pt
+    url: https://github.com/ultralytics/assets/releases/download/v1.0.0/yolov10n.pt
+  - name: yolov10s
+    framework: ultralytics
+    weights: yolov10s.pt
+    url: https://github.com/ultralytics/assets/releases/download/v1.0.0/yolov10s.pt
+  - name: yolov10m
+    framework: ultralytics
+    weights: yolov10m.pt
+    url: https://github.com/ultralytics/assets/releases/download/v1.0.0/yolov10m.pt
+  - name: yolov10b
+    framework: ultralytics
+    weights: yolov10b.pt
+    url: https://github.com/ultralytics/assets/releases/download/v1.0.0/yolov10b.pt
+  # - name: yolov10l
+  #   framework: ultralytics
+  #   weights: yolov10l.pt
+  #   url: https://github.com/ultralytics/assets/releases/download/v1.0.0/yolov10l.pt
+  # - name: yolov10x
+  #   framework: ultralytics
+  #   weights: yolov10x.pt
+  #   url: https://github.com/ultralytics/assets/releases/download/v1.0.0/yolov10x.pt
+  - name: faster_rcnn
+    framework: torchvision
+    weights: null
+  - name: rtdetr-l
+    framework: ultralytics
+    weights: rtdetr-l.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/rtdetr-l.pt
+  - name: rtdetr-x
+    framework: ultralytics
+    weights: rtdetr-x.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/rtdetr-x.pt
 
 evaluation:
   batch_size: 32
   num_workers: 4
   device: auto
   image_size: 640
-  conf_threshold: 0.001
+  conf_threshold: 0.25
   iou_threshold: 0.6
 
 output:

@@ -5,7 +5,7 @@ from collections import defaultdict
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 import numpy as np
-from ..models.base import BaseModel, Detection
+from ..models.base import Detection
 
 
 class COCOMetrics:
@@ -14,21 +14,19 @@ class COCOMetrics:
         self.image_ids = self.coco_gt.getImgIds()
 
     def compute_metrics(
-        self, predictions: List[Dict[str, Any]], iou_threshold: float = 0.6
+        self, predictions: List[Dict[str, Any]], iou_threshold: float = 0.5
     ) -> Dict[str, float]:
         coco_dt = self.coco_gt.loadRes(predictions)
         coco_eval = COCOeval(self.coco_gt, coco_dt, "bbox")
 
-        coco_eval.params.iouThrs = np.array([iou_threshold])
         coco_eval.evaluate()
         coco_eval.accumulate()
         coco_eval.summarize()
 
         metrics = {
-            "mAP50": coco_eval.stats[0],
-            "mAP50-95": coco_eval.stats[1],
-            "AP50": coco_eval.stats[1],
-            "AP75": coco_eval.stats[2],
+            "AP@0.50": coco_eval.stats[0],
+            "AP@0.50:0.95": coco_eval.stats[1],
+            "AP@0.75": coco_eval.stats[2],
             "AP_small": coco_eval.stats[3],
             "AP_medium": coco_eval.stats[4],
             "AP_large": coco_eval.stats[5],
@@ -56,7 +54,7 @@ class COCOMetrics:
 
                 pred = {
                     "image_id": image_id,
-                    "category_id": det.class_id + 1,
+                    "category_id": det.class_id,
                     "bbox": [x1, y1, width, height],
                     "score": det.confidence,
                     "id": ann_id,
@@ -146,7 +144,5 @@ class MetricsAggregator:
         return comparison
 
     def save_results(self, output_path: str) -> None:
-        import json
-
         with open(output_path, "w") as f:
             json.dump(dict(self.model_results), f, indent=2)

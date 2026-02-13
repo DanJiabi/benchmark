@@ -1,7 +1,7 @@
 import yaml
 import logging
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 import torch
 
 
@@ -85,17 +85,64 @@ def get_device(device_config: str = "auto") -> torch.device:
 def download_model_weights(url: str, output_path: Path) -> None:
     import requests
 
+    logger = logging.getLogger("benchmark")
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if output_path.exists():
         return
 
-    response = requests.get(url, stream=True)
-    response.raise_for_status()
+    try:
+        logger.info(f"开始下载: {url}")
+        response = requests.get(url, stream=True, timeout=300)
+        response.raise_for_status()
 
-    with open(output_path, "wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
-            f.write(chunk)
+        total_size = int(response.headers.get("content-length", 0))
+        downloaded = 0
+
+        with open(output_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+                downloaded += len(chunk)
+
+                if total_size > 0:
+                    percent = downloaded / total_size * 100
+                    if int(percent) % 10 == 0:
+                        logger.info(
+                            f"    下载进度: {percent:.0f}% ({downloaded / 1024 / 1024:.1f}MB)"
+                        )
+
+        logger.info(
+            f"✅ 下载完成: {output_path.name} ({total_size / 1024 / 1024:.1f}MB)"
+        )
+
+    except requests.exceptions.Timeout:
+        logger.error(f"❌ 下载超时: {url}")
+        logger.error("   请检查网络连接或稍后重试")
+        raise
+
+    except requests.exceptions.ConnectionError:
+        logger.error(f"❌ 网络连接错误: {url}")
+        logger.error("   请检查网络连接")
+        raise
+
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"❌ HTTP错误: {e}")
+        logger.error(f"   URL: {url}")
+        logger.error("   请检查URL是否正确")
+        raise
+
+    except IOError as e:
+        logger.error(f"❌ 文件写入错误: {e}")
+        logger.error(f"   目标路径: {output_path}")
+        logger.error("   请检查磁盘空间和权限")
+        raise
+
+    except Exception as e:
+        logger.error(f"❌ 下载失败: {e}")
+        logger.error(f"   URL: {url}")
+        logger.error(f"   目标: {output_path}")
+        raise
 
 
 def save_predictions(predictions: List[Dict[str, Any]], output_path: Path) -> None:

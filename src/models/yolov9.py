@@ -1,12 +1,11 @@
 import numpy as np
-import torch
 from typing import List, Dict, Any
 from .base import BaseModel, Detection
 
 
 class YOLOv9(BaseModel):
-    def __init__(self, device: str = "auto"):
-        super().__init__(device)
+    def __init__(self, device: str = "auto", conf_threshold: float = 0.001):
+        super().__init__(device, conf_threshold)
 
     def load_model(self, weights_path: str) -> None:
         from ultralytics import YOLO
@@ -20,8 +19,11 @@ class YOLOv9(BaseModel):
             "device": self.device,
         }
 
-    def predict(self, image: np.ndarray) -> List[Detection]:
-        results = self.model(image, verbose=False)
+    def predict(
+        self, image: np.ndarray, conf_threshold: float = None
+    ) -> List[Detection]:
+        conf = conf_threshold if conf_threshold is not None else self.conf_threshold
+        results = self.model(image, verbose=False, conf=conf)
         detections = []
 
         for result in results:
@@ -30,7 +32,7 @@ class YOLOv9(BaseModel):
                 xyxy = box.xyxy.cpu().numpy()[0].tolist()
                 conf = float(box.conf.cpu().numpy()[0])
                 cls = int(box.cls.cpu().numpy()[0])
-                detections.append(Detection(xyxy, conf, cls))
+                detections.append(Detection(xyxy, conf, cls + 1))
 
         return detections
 
@@ -49,8 +51,8 @@ class YOLOv9(BaseModel):
 
 
 class YOLOv10(BaseModel):
-    def __init__(self, device: str = "auto"):
-        super().__init__(device)
+    def __init__(self, device: str = "auto", conf_threshold: float = 0.001):
+        super().__init__(device, conf_threshold)
 
     def load_model(self, weights_path: str) -> None:
         from ultralytics import YOLO
@@ -64,8 +66,11 @@ class YOLOv10(BaseModel):
             "device": self.device,
         }
 
-    def predict(self, image: np.ndarray) -> List[Detection]:
-        results = self.model(image, verbose=False)
+    def predict(
+        self, image: np.ndarray, conf_threshold: float = None
+    ) -> List[Detection]:
+        conf = conf_threshold if conf_threshold is not None else self.conf_threshold
+        results = self.model(image, verbose=False, conf=conf)
         detections = []
 
         for result in results:
@@ -74,7 +79,7 @@ class YOLOv10(BaseModel):
                 xyxy = box.xyxy.cpu().numpy()[0].tolist()
                 conf = float(box.conf.cpu().numpy()[0])
                 cls = int(box.cls.cpu().numpy()[0])
-                detections.append(Detection(xyxy, conf, cls))
+                detections.append(Detection(xyxy, conf, cls + 1))
 
         return detections
 

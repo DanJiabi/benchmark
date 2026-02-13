@@ -1,8 +1,6 @@
 from typing import Dict, List, Any
 import matplotlib.pyplot as plt
-import seaborn as sns
 import pandas as pd
-import numpy as np
 
 
 def plot_metrics_comparison(
@@ -65,11 +63,11 @@ def plot_fps_vs_map(
     for name, result in results.items():
         model_names.append(name)
         fps_values.append(result["performance"]["fps"])
-        map_values.append(result["coco_metrics"]["mAP50"])
+        map_values.append(result["coco_metrics"]["AP@0.50"])
 
     fig, ax = plt.subplots(figsize=figsize)
 
-    scatter = ax.scatter(fps_values, map_values, s=200, alpha=0.7)
+    ax.scatter(fps_values, map_values, s=200, alpha=0.7)
 
     for i, name in enumerate(model_names):
         ax.annotate(
@@ -106,7 +104,7 @@ def plot_model_size_vs_performance(
     for name, result in results.items():
         model_names.append(name)
         params.append(result["model_info"].get("params", 0))
-        map_values.append(result["coco_metrics"]["mAP50"])
+        map_values.append(result["coco_metrics"]["AP@0.50"])
         sizes_mb.append(result["model_info"].get("model_size_mb", params[-1] * 4))
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
@@ -153,7 +151,7 @@ def generate_results_table(
     results: Dict[str, Dict[str, Any]], metrics: List[str] = None
 ) -> pd.DataFrame:
     if metrics is None:
-        metrics = ["mAP50", "mAP50-95", "fps", "params"]
+        metrics = ["AP@0.50", "AP@0.50:0.95", "fps", "params"]
 
     table_data = []
 

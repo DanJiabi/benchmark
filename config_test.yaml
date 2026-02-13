@@ -8,6 +8,16 @@ models:
     framework: ultralytics
     weights: yolov8n.pt
     url: https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n.pt
+  - name: faster_rcnn
+    framework: torchvision
+    weights: null
+  - name: rtdetr-l
+    framework: ultralytics
+    weights: rtdetr-l.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/rtdetr-l.pt
 
 test:
-  max_images: 100
+  max_images: 10
+
+evaluation:
+  conf_threshold: 0.25

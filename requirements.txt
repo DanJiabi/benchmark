@@ -10,3 +10,8 @@ matplotlib
 seaborn
 tqdm
 rich
+pytest
+pytest-cov
+mypy
+black
+ruff
