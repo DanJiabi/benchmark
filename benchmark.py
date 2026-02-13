@@ -125,7 +125,14 @@ def run_single_model(
         weights_path = Path("models_cache") / weights_file
         if weights_url and not weights_path.exists():
             logger.info(f"下载模型权重: {weights_url}")
-            download_model_weights(weights_url, weights_path)
+            try:
+                download_model_weights(weights_url, weights_path)
+            except Exception as e:
+                logger.error(f"❌ 模型下载失败: {model_name}")
+                logger.error(f"   URL: {weights_url}")
+                logger.error(f"   错误: {e}")
+                logger.warning(f"   跳过该模型，继续测试其他模型")
+                return None
 
     logger.info(
         f"加载模型权重: {weights_path if weights_path else '使用内置预训练权重'}"
