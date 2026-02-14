@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 import numpy as np
-from src.models.yolov8 import YOLOv8
+from src.models import create_model, load_model_wrapper
 from src.models.base import BaseModel, Detection
 
 
@@ -19,8 +19,8 @@ class TestYOLOv8:
     @pytest.fixture
     def model(self):
         """加载 YOLOv8n 模型"""
-        model = YOLOv8(device="cpu", conf_threshold=0.25)
-        model.load_model("models_cache/yolov8n.pt")
+        model = create_model("yolov8n", device="cpu", conf_threshold=0.25)
+        load_model_wrapper(model, "models_cache/yolov8n.pt", "YOLOv8n")
         return model
 
     @pytest.fixture

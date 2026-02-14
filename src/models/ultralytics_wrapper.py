@@ -3,19 +3,23 @@ from typing import List, Dict, Any
 from .base import BaseModel, Detection
 
 
-class YOLOv8(BaseModel):
+class UltralyticsWrapper(BaseModel):
     def __init__(self, device: str = "auto", conf_threshold: float = 0.001):
-        super().__init__(device)
-        self.conf_threshold = conf_threshold
+        super().__init__(device, conf_threshold)
+        self.model_type = None
+        self.names = {}
 
-    def load_model(self, weights_path: str) -> None:
+    def load_model(self, weights_path: str, model_name: str = "Ultralytics") -> None:
         from ultralytics import YOLO
 
+        self.model_type = model_name
         self.model = YOLO(weights_path)
         self.model.to(self.device)
 
+        self.names = self.model.names if hasattr(self.model, "names") else {}
+
         self.model_info = {
-            "name": "YOLOv8",
+            "name": model_name,
             "weights": weights_path,
             "device": self.device,
         }
@@ -24,7 +28,7 @@ class YOLOv8(BaseModel):
         self, image: np.ndarray, conf_threshold: float = None
     ) -> List[Detection]:
         conf = conf_threshold if conf_threshold is not None else self.conf_threshold
-        results = self.model(image, verbose=False, **{"conf": conf})
+        results = self.model(image, verbose=False, conf=conf)
         detections = []
 
         for result in results:
@@ -42,10 +46,11 @@ class YOLOv8(BaseModel):
             return {}
 
         info = self.model_info.copy()
-        model_yaml = self.model.model.yaml if hasattr(self.model.model, "yaml") else {}
-
         info["params"] = sum(p.numel() for p in self.model.model.parameters()) / 1e6
-        info["model_yaml"] = model_yaml
+
+        model_yaml = self.model.model.yaml if hasattr(self.model.model, "yaml") else {}
+        if model_yaml:
+            info["model_yaml"] = model_yaml
 
         return info
 

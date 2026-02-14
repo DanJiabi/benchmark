@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torchvision
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from .base import BaseModel, Detection
 
 
@@ -10,7 +10,7 @@ class FasterRCNN(BaseModel):
         super().__init__(device, conf_threshold)
         self.conf_threshold = conf_threshold
 
-    def load_model(self, weights_path: str = None) -> None:
+    def load_model(self, weights_path: Optional[str] = None) -> None:
         if weights_path is None:
             weights = (
                 torchvision.models.detection.FasterRCNN_ResNet50_FPN_Weights.DEFAULT

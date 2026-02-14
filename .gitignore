@@ -27,6 +27,17 @@ coverage.xml
 .pytest_cache/
 *.cover
 
+# Ruff
+.ruff_cache/
+
+# Black
+.black_cache/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
 # Translations
 *.mo
 *.pot
@@ -82,6 +93,11 @@ models_cache/*.pth
 models_cache/*.onnx
 models_cache/*.engine
 
+# Exported models
+models_export/
+models_export/*.onnx
+models_export/*.engine
+
 # Model weights in root directory
 *.pt
 *.pth
@@ -111,3 +127,9 @@ outputs/figures/*.png
 
 # Output files and directories
 out*
+
+# Temporary files and directories
+.temp/
+.temp/*.py
+.temp/*.md
+.temp/*.txt

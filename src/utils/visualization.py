@@ -1,6 +1,71 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
+from pathlib import Path
+import cv2
+import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+
+
+def draw_detection_boxes(
+    image: np.ndarray,
+    detections: List[Any],
+    class_names: Dict[int, str],
+    max_boxes: int = 10,
+) -> np.ndarray:
+    """在图片上绘制检测框和标签，返回绘制后的图片"""
+    img_draw = image.copy()
+
+    h, w = img_draw.shape[:2]
+
+    for det in detections[:max_boxes]:
+        bbox = det.bbox
+        conf = det.confidence
+        cls_id = det.class_id
+
+        x1, y1, x2, y2 = map(int, bbox[:4])
+
+        if not (0 <= x1 < w and 0 <= y1 < h and 0 <= x2 < w and 0 <= y2 < h):
+            continue
+
+        class_name = class_names.get(cls_id, f"cls_{cls_id}")
+
+        cv2.rectangle(img_draw, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+        label = f"{class_name}: {conf:.2f}"
+        label_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)[0]
+
+        cv2.rectangle(
+            img_draw,
+            (x1, y1 - label_size[1] - 5),
+            (x1 + label_size[0], y1),
+            (0, 0, 0),
+            -1,
+        )
+
+        cv2.putText(
+            img_draw,
+            label,
+            (x1, y1 - 3),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 255, 255),
+            1,
+        )
+
+    return img_draw
+
+
+def save_detection_visualization(
+    image: np.ndarray,
+    detections: List[Any],
+    class_names: Dict[int, str],
+    output_path: Path,
+    max_boxes: int = 10,
+) -> int:
+    """绘制检测框并保存到文件，返回绘制的检测框数量"""
+    img_draw = draw_detection_boxes(image, detections, class_names, max_boxes)
+    cv2.imwrite(str(output_path), img_draw)
+    return min(len(detections), max_boxes)
 
 
 def plot_metrics_comparison(

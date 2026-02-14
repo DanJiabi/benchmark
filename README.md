@@ -2,6 +2,39 @@
 
 基于 COCO 数据集的目标检测模型性能基准测试项目。
 
+## 📦 Installation
+
+### Quick Install (Editable Mode - Recommended)
+
+```bash
+# Create virtual environment
+mamba env create -f environment.yml --force
+
+# Activate environment
+conda activate benchmark
+
+# Install in editable mode
+pip install -e .
+
+# Verify installation
+python test_installation.py
+```
+
+### Traditional Installation
+
+```bash
+# Create virtual environment
+mamba env create -f environment.yml --force
+
+# Activate environment
+conda activate benchmark
+
+# No pip install needed - just run scripts directly
+python benchmark.py --model yolov8n
+```
+
+> **Note**: For detailed installation instructions, see [INSTALLATION.md](INSTALLATION.md)
+
 ## ✨ 特性
 
 - **多模型支持**: YOLOv8 (n/s/m/l/x), YOLOv9, YOLOv10, RT-DETR, Faster R-CNN
@@ -12,7 +45,7 @@
 
 ## 🚀 快速开始
 
-### 1. 环境设置
+### 方式 1: 现代包安装（推荐）
 
 ```bash
 # 创建虚拟环境
@@ -20,7 +53,39 @@ mamba env create -f environment.yml --force
 
 # 激活环境
 conda activate benchmark
+
+# 以可编辑模式安装
+pip install -e .
+
+# 验证安装
+python scripts/test_installation.py
+
+# 运行基准测试
+od-benchmark benchmark --model yolov8n --num-images 10
 ```
+
+### 方式 2: 传统方式（无需 pip install）
+
+```bash
+# 创建虚拟环境
+mamba env create -f environment.yml --force
+
+# 激活环境
+conda activate benchmark
+
+# 直接运行脚本（无需 pip install）
+python benchmark.py --model yolov8n --num-images 10
+```
+
+### 方式 3: 使用包装脚本（自动设置环境）
+
+```bash
+# 使用 run_benchmark.sh 脚本
+# 自动设置 PYTORCH_ENABLE_MPS_FALLBACK 环境变量
+./run_benchmark.sh --model yolov8n --num-images 10
+```
+
+> **详细安装说明**: 请参阅 [INSTALLATION.md](INSTALLATION.md)
 
 ### 2. 下载模型权重
 
@@ -28,23 +93,23 @@ conda activate benchmark
 
 #### 方式 1: 使用下载工具（推荐）
 
-使用 `download_weights.py` 工具批量下载所有模型权重：
+使用 `scripts/download_weights.py` 工具批量下载所有模型权重：
 
 ```bash
 # 下载 config.yaml 中的所有模型权重
-python download_weights.py
+python scripts/download_weights.py
 
 # 使用指定配置文件
-python download_weights.py --config config_test.yaml
+python scripts/download_weights.py --config config_test.yaml
 
 # 指定缓存目录
-python download_weights.py --cache-dir /path/to/cache
+python scripts/download_weights.py --cache-dir /path/to/cache
 
 # 覆盖已存在的文件
-python download_weights.py --overwrite
+python scripts/download_weights.py --overwrite
 
 # 仅检查文件完整性（不下载）
-python download_weights.py --check-only
+python scripts/download_weights.py --check-only
 ```
 
 **下载工具功能**：
@@ -78,17 +143,15 @@ python benchmark.py --model yolov8n
 ### 3. 运行基准测试
 
 ```bash
-# 快速测试（少量图片）
-python benchmark.py --config config_test.yaml --model yolov8n
+# 方式 1: 使用 CLI 工具（推荐）
+od-benchmark benchmark --model yolov8n --num-images 10
 
-# 完整测试（所有模型）
-python benchmark.py --all --conf-threshold 0.001
+# 方式 2: 使用包装脚本（自动设置环境）
+./run_benchmark.sh --model yolov8n --num-images 10
 
-# 测试指定模型
-python benchmark.py --model yolov8n --model yolov8s
-
-# 生成可视化
-python benchmark.py --model yolov8n --visualize --num-viz-images 20
+# 方式 3: 使用 Python 脚本（向后兼容）
+export PYTORCH_ENABLE_MPS_FALLBACK=1
+python benchmark.py --model yolov8n --num-images 10
 ```
 
 ### 4. 查看结果
@@ -102,6 +165,47 @@ open outputs/visualizations/
 ```
 
 ## 📋 命令行参数
+
+### 运行方式
+
+本项目提供三种运行方式，按推荐顺序排列：
+
+#### 方式 1: 使用 CLI 工具（推荐）
+
+```bash
+# 直接使用 CLI 工具
+od-benchmark benchmark [options]
+```
+
+优点：
+- 现代化的命令行界面
+- 统一的参数处理
+- 更好的错误信息
+
+#### 方式 2: 使用包装脚本（自动设置环境）
+
+```bash
+# 使用包装脚本（自动设置 PYTORCH_ENABLE_MPS_FALLBACK）
+./run_benchmark.sh [options]
+```
+
+优点：
+- 自动设置环境变量
+- 自动检测 Python 命令
+- 跨平台兼容
+
+#### 方式 3: 使用 Python 脚本（向后兼容）
+
+```bash
+# 直接运行 Python 脚本
+export PYTORCH_ENABLE_MPS_FALLBACK=1
+python benchmark.py [options]
+```
+
+说明：
+- 保留原有的使用方式
+- 需要手动设置环境变量
+- 适合习惯直接运行 Python 脚本的用户
 
 ### 基础参数
 
@@ -148,15 +252,17 @@ benchmark/
 ├── config.yaml              # 主配置文件
 ├── config_test.yaml         # 测试配置文件
 ├── requirements.txt         # Python 依赖
+├── pyproject.toml          # Python 包配置
 ├── benchmark.py            # 主运行脚本
+├── scripts/               # 工具脚本
+│   ├── download_weights.py  # 权重下载工具
+│   └── test_installation.py # 安装验证脚本
 ├── examples/               # 示例代码
 │   └── visualize_clean.py # 可视化示例
 ├── src/                   # 源代码
 │   ├── models/            # 模型定义
 │   │   ├── base.py       # 基类和接口
-│   │   ├── yolov8.py     # YOLOv8 实现
-│   │   ├── yolov9.py     # YOLOv9 实现
-│   │   ├── rt_detr.py    # RT-DETR 实现
+│   │   ├── ultralytics_wrapper.py # Ultralytics 包装器
 │   │   └── faster_rcnn.py # Faster R-CNN 实现
 │   ├── data/             # 数据集处理
 │   │   └── coco_dataset.py
@@ -164,7 +270,8 @@ benchmark/
 │   │   └── coco_metrics.py
 │   └── utils/           # 工具函数
 │       ├── logger.py     # 日志和配置
-│       └── visualization.py
+│       ├── visualization.py # 可视化工具
+│       └── cli.py       # CLI 接口
 ├── outputs/               # 输出目录
 │   ├── results/          # 测试结果（JSON, CSV）
 │   ├── logs/             # 运行日志
@@ -287,14 +394,17 @@ python benchmark.py --all
 ### 基础使用
 
 ```bash
-# 测试单个模型
-python benchmark.py --model yolov8n
+# 快速测试（少量图片）
+od-benchmark benchmark --model yolov8n --num-images 10
 
-# 测试多个模型
-python benchmark.py --model yolov8n --model yolov8s --model yolov8m
+# 完整测试（所有模型）
+od-benchmark benchmark --all --conf-threshold 0.001
 
-# 测试所有模型
-python benchmark.py --all
+# 测试指定模型
+od-benchmark benchmark --model yolov8n --model yolov8s
+
+# 生成可视化
+od-benchmark benchmark --model yolov8n --visualize --num-viz-images 20
 ```
 
 ### 生成可视化
@@ -418,17 +528,68 @@ outputs/
 
 ## 🔧 常见问题
 
-### 1. MPS 后端错误
+### 1. 添加自定义模型
+
+**问题**: 如何添加我自己的目标检测模型？
+
+**解决**: 查看 [添加自定义模型指南](docs/ADD_CUSTOM_MODEL.md)
+
+**快速方式** (使用 Ultralytics 模型):
+```yaml
+# 在 config.yaml 中添加
+models:
+  - name: my_custom_yolo
+    framework: ultralytics
+    weights: my_custom_yolo.pt
+    url: https://github.com/user/repo/releases/download/v1.0/my_custom_yolo.pt
+```
+
+```bash
+# 运行
+od-benchmark benchmark --model my_custom_yolo
+```
+
+**完整方式** (创建自定义模型类):
+1. 创建模型类，继承 `BaseModel`
+2. 在 `src/models/__init__.py` 中注册
+3. 在 `config.yaml` 中配置
+4. 运行测试
+
+详细步骤请参考 [docs/ADD_CUSTOM_MODEL.md](docs/ADD_CUSTOM_MODEL.md)
+
+### 2. MPS 后端错误
 
 **问题**: `NotImplementedError: The operator 'torchvision::nms' is not currently implemented for the MPS device`
 
 **解决**: 设置环境变量
 ```bash
-export PYTORCH_ENABLE_MPS_FALLBACK=1
-python benchmark.py --all
+ export PYTORCH_ENABLE_MPS_FALLBACK=1
+ python benchmark.py --all
+``` 
+
+### 2. 模型对比分析
+
+**问题**: 如何将我的自定义模型与基准模型进行对比分析？
+
+**解决**: 使用 `od-benchmark analyze` 命令
+
+快速开始：
+
+```bash
+# 快速测试（模拟模式）
+python scripts/test_analysis.py
+
+# 对比两个标准模型
+od-benchmark analyze \
+  --baseline yolov8n \
+  --user-model yolov8s \
+  --num-images 100 \
+  --format all
 ```
 
-### 2. mAP 指标偏低
+详细使用指南: [模型对比分析指南](docs/ANALYSIS_USAGE.md)
+
+### 3. mAP 指标偏低
 
 **问题**: mAP 只有 7-10%，远低于官方的 40-50%
 

@@ -12,6 +12,20 @@ import yaml
 import requests
 
 
+def get_project_root() -> Path:
+    """获取项目根目录"""
+    script_path = Path(__file__).resolve()
+    if script_path.name == "download_weights.py":
+        return script_path.parent.parent
+    elif script_path.name == "__main__.py":
+        return script_path.parent.parent.parent
+    else:
+        return Path.cwd()
+
+
+PROJECT_ROOT = get_project_root()
+
+
 def get_file_hash(file_path: Path, algorithm: str = "md5") -> str:
     """计算文件的哈希值"""
     hash_func = getattr(hashlib, algorithm)()
@@ -359,14 +373,23 @@ def main():
 
     args = parser.parse_args()
 
+    # 处理相对路径
+    config_path = Path(args.config)
+    if not config_path.is_absolute():
+        config_path = PROJECT_ROOT / args.config
+
+    cache_dir_path = Path(args.cache_dir)
+    if not cache_dir_path.is_absolute():
+        cache_dir_path = PROJECT_ROOT / args.cache_dir
+
     if args.check_only:
         # 仅检查模式
         print("=" * 80)
         print("检查模型权重文件完整性")
         print("=" * 80)
 
-        config = load_config(args.config)
-        cache_dir = Path(args.cache_dir)
+        config = load_config(str(config_path))
+        cache_dir = cache_dir_path
 
         if "models" not in config:
             print("❌ 配置文件中没有找到 'models' 节")
@@ -393,7 +416,7 @@ def main():
                 print(f"[{idx}/{len(models)}] {model_name:20s} ⚠️  不存在")
     else:
         # 下载模式
-        download_models(args.config, args.cache_dir, args.overwrite)
+        download_models(str(config_path), str(cache_dir_path), args.overwrite)
 
 
 if __name__ == "__main__":

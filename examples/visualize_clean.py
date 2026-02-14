@@ -14,22 +14,11 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.models.base import Detection
-from src.models.yolov8 import YOLOv8
-from src.models.yolov9 import YOLOv9, YOLOv10
-from src.models.faster_rcnn import FasterRCNN
-from src.models.rt_detr import RTDETR
+from src.models import create_model, load_model_wrapper
+from src.utils.visualization import draw_detection_boxes
 
 import cv2
 import numpy as np
-
-
-MODEL_REGISTRY = {
-    "yolov8": YOLOv8,
-    "yolov9": YOLOv9,
-    "yolov10": YOLOv10,
-    "faster_rcnn": FasterRCNN,
-    "rtdetr": RTDETR,
-}
 
 
 def get_models_from_config(config_path: str = "config.yaml") -> List[str]:
@@ -99,48 +88,8 @@ def draw_detections(
     max_boxes: int = 10,
 ) -> tuple:
     """绘制检测框到图片上"""
-    img_draw = image.copy()
-    count = 0
-
-    h, w = img_draw.shape[:2]
-
-    for det in detections[:max_boxes]:
-        bbox = det.bbox
-        conf = det.confidence
-        cls_id = det.class_id
-
-        x1, y1, x2, y2 = map(int, bbox[:4])
-
-        if not (0 <= x1 < w and 0 <= y1 < h and 0 <= x2 < w and 0 <= y2 < h):
-            continue
-
-        class_name = class_names.get(cls_id, f"cls_{cls_id}")
-
-        cv2.rectangle(img_draw, (x1, y1), (x2, y2), (0, 255, 0), 2)
-
-        label = f"{class_name}: {conf:.2f}"
-        label_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)[0]
-
-        cv2.rectangle(
-            img_draw,
-            (x1, y1 - label_size[1] - 5),
-            (x1 + label_size[0], y1),
-            (0, 0, 0),
-            -1,
-        )
-
-        cv2.putText(
-            img_draw,
-            label,
-            (x1, y1 - 3),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            (255, 255, 255),
-            1,
-        )
-
-        count += 1
-
+    img_draw = draw_detection_boxes(image, detections, class_names, max_boxes)
+    count = min(len(detections), max_boxes)
     return img_draw, count
 
 
@@ -297,38 +246,40 @@ def create_comparison_thumbnails(
 
 def load_model(model_name: str, conf_threshold: float = CONFIDENCE_THRESHOLD) -> Any:
     """加载指定的模型"""
-    for key, model_class in MODEL_REGISTRY.items():
-        if model_name.lower().startswith(key):
-            model = model_class(device="auto", conf_threshold=conf_threshold)
+    try:
+        model = create_model(model_name, device="auto", conf_threshold=conf_threshold)
 
-            weights_path = Path("models_cache") / f"{model_name}.pt"
+        weights_path = Path("models_cache") / f"{model_name}.pt"
 
-            if weights_path.exists():
-                try:
-                    model.load_model(str(weights_path))
-                    print(f"  ✅ 加载权重: {weights_path}")
-                    return model, model_class.__name__
-                except Exception as e:
-                    print(f"  ❌ 加载权重失败: {weights_path}")
-                    print(f"  错误: {e}")
-                    print("  ℹ️  跳过此模型")
-                    return None, None
-            elif key == "faster_rcnn":
-                # FasterRCNN 支持 None（内置预训练权重）
-                try:
-                    model.load_model(None)
-                    print("  ✅ 使用内置权重")
-                    return model, model_class.__name__
-                except Exception as e:
-                    print(f"  ❌ 加载模型失败: {e}")
-                    return None, None
-            else:
-                # 对于其他模型，如果权重文件不存在，则跳过
-                print(f"  ⚠️  权重文件不存在: {weights_path}")
-                print("  ℹ️  请先下载模型权重或使用其他模型")
+        if weights_path.exists():
+            try:
+                load_model_wrapper(model, str(weights_path), model_name)
+                print(f"  ✅ 加载权重: {weights_path}")
+                return model, model_name
+            except Exception as e:
+                print(f"  ❌ 加载权重失败: {weights_path}")
+                print(f"  错误: {e}")
+                print("  ℹ️  跳过此模型")
                 return None, None
+        elif model_name.lower().startswith("faster"):
+            # FasterRCNN 支持 None（内置预训练权重）
+            try:
+                model.load_model(None)
+                print("  ✅ 使用内置权重")
+                return model, "FasterRCNN"
+            except Exception as e:
+                print(f"  ❌ 加载模型失败: {e}")
+                return None, None
+        else:
+            # 对于其他模型，如果权重文件不存在，则跳过
+            print(f"  ⚠️  权重文件不存在: {weights_path}")
+            print("  ℹ️  请先下载模型权重或使用其他模型")
+            return None, None
 
-    raise ValueError(f"不支持的模型: {model_name}")
+    except ValueError as e:
+        print(f"❌ 不支持的模型: {model_name}")
+        print(f"  错误: {e}")
+        return None, None
 
 
 def main():
