@@ -3,6 +3,8 @@ dataset:
   split: val2017
   annotations: annotations/instances_val2017.json
 
+output_dir: outputs/results
+
 models:
   - name: yolov8n
     framework: ultralytics
@@ -36,14 +38,6 @@ models:
     framework: ultralytics
     weights: yolov9m.pt
     url: https://github.com/ultralytics/assets/releases/download/v0.1.0/yolov9m.pt
-  - name: yolov10n
-    framework: ultralytics
-    weights: yolov10n.pt
-    url: https://github.com/ultralytics/assets/releases/download/v0.1.0/yolov10n.pt
-  - name: yolov10s
-    framework: ultralytics
-    weights: yolov10s.pt
-    url: https://github.com/ultralytics/assets/releases/download/v0.1.0/yolov10s.pt
   - name: yolov10n
     framework: ultralytics
     weights: yolov10n.pt

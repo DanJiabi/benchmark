@@ -41,6 +41,19 @@ class Config:
     def get_logging_config(self) -> Dict[str, Any]:
         return self.config.get("logging", {})
 
+    def has(self, key: str) -> bool:
+        """检查配置中是否存在指定键"""
+        keys = key.split(".")
+        value = self.config
+
+        for k in keys:
+            if isinstance(value, dict) and k in value:
+                value = value[k]
+            else:
+                return False
+
+        return True
+
 
 def setup_logger(config: Config) -> logging.Logger:
     log_config = config.get_logging_config()

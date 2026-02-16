@@ -44,7 +44,8 @@ class TestYOLOv8:
         assert "name" in info
         assert "params" in info
         assert info["params"] > 0
-        assert info["name"] == "YOLOv8"
+        # 模型名称可能是 "YOLOv8" 或具体的模型名如 "YOLOv8n"
+        assert "YOLOv8" in info["name"]
 
     def test_prediction_format(self, model, sample_image):
         """测试预测格式"""

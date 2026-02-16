@@ -249,7 +249,12 @@ def load_model(model_name: str, conf_threshold: float = CONFIDENCE_THRESHOLD) ->
     try:
         model = create_model(model_name, device="auto", conf_threshold=conf_threshold)
 
-        weights_path = Path("models_cache") / f"{model_name}.pt"
+        # 自动检测权重文件扩展名
+        model_key = model_name.lower()
+        if model_name.endswith(".onnx") or ":onnx" in model_key:
+            weights_path = Path(model_name.replace(":onnx", ""))
+        else:
+            weights_path = Path("models_cache") / f"{model_name}.pt"
 
         if weights_path.exists():
             try:

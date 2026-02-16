@@ -190,42 +190,45 @@ def run_single_model(
     return result
 
 
-def benchmark_main():
+def benchmark_main(args=None):
     """Main benchmark function"""
-    parser = argparse.ArgumentParser(description="目标检测模型性能基准测试")
-    parser.add_argument(
-        "--config", type=str, default="config.yaml", help="配置文件路径"
-    )
-    parser.add_argument("--model", type=str, action="append", help="指定要测试的模型")
-    parser.add_argument("--all", action="store_true", help="测试所有配置的模型")
-    parser.add_argument(
-        "--output-dir", type=str, default="outputs/results", help="输出目录"
-    )
-    parser.add_argument(
-        "--visualize",
-        action="store_true",
-        help="保存检测框可视化图片",
-    )
-    parser.add_argument(
-        "--num-viz-images",
-        type=int,
-        default=10,
-        help="可视化图片数量（默认: 10）",
-    )
-    parser.add_argument(
-        "--conf-threshold",
-        type=float,
-        default=None,
-        help="置信度阈值（默认: 使用配置文件中的值）",
-    )
-    parser.add_argument(
-        "--num-images",
-        type=int,
-        default=None,
-        help="测试图片数量（默认: 全部数据）",
-    )
+    if args is None:
+        parser = argparse.ArgumentParser(description="目标检测模型性能基准测试")
+        parser.add_argument(
+            "--config", type=str, default="config.yaml", help="配置文件路径"
+        )
+        parser.add_argument(
+            "--model", type=str, action="append", help="指定要测试的模型"
+        )
+        parser.add_argument("--all", action="store_true", help="测试所有配置的模型")
+        parser.add_argument(
+            "--output-dir", type=str, default="outputs/results", help="输出目录"
+        )
+        parser.add_argument(
+            "--visualize",
+            action="store_true",
+            help="保存检测框可视化图片",
+        )
+        parser.add_argument(
+            "--num-viz-images",
+            type=int,
+            default=10,
+            help="可视化图片数量（默认: 10）",
+        )
+        parser.add_argument(
+            "--conf-threshold",
+            type=float,
+            default=None,
+            help="置信度阈值（默认: 使用配置文件中的值）",
+        )
+        parser.add_argument(
+            "--num-images",
+            type=int,
+            default=None,
+            help="测试图片数量（默认: 全部数据）",
+        )
 
-    args = parser.parse_args()
+        args = parser.parse_args()
 
     try:
         config = Config(args.config)
@@ -903,7 +906,7 @@ def main():
     parser.add_argument("--version", action="version", version="od-benchmark 0.1.0")
 
     subparsers = parser.add_subparsers(
-        dest="command", help="Available commands", required=False
+        dest="command", help="Available commands", required=True
     )
 
     # Benchmark command
@@ -1134,7 +1137,7 @@ def main():
         return
 
     if args.command == "benchmark":
-        benchmark_main()
+        benchmark_main(args)
 
     elif args.command == "analyze":
         analyze_main(args)

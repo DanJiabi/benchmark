@@ -80,5 +80,11 @@ def load_model_wrapper(
         model.load_model(weights_path, model_name)
     elif isinstance(model, FasterRCNN):
         model.load_model(weights_path)
+    elif isinstance(model, (ONNXModel, SimulatedModel)):
+        if weights_path is not None:
+            model.load_model(weights_path)
     else:
-        raise ValueError(f"Unknown model type: {type(model)}")
+        if weights_path is not None:
+            model.load_model(weights_path)
+        else:
+            raise ValueError(f"Unknown model type: {type(model)}")

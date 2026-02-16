@@ -66,6 +66,8 @@ class COCOInferenceDataset:
     def __init__(self, dataset_path: str, split: str = "val2017"):
         self.dataset = COCODataset(dataset_path, split)
         self.dataset.load_annotations()
+        self.dataset_path = self.dataset.dataset_path
+        self.split = self.dataset.split
 
     def __len__(self) -> int:
         return len(self.dataset)
@@ -74,6 +76,11 @@ class COCOInferenceDataset:
         for idx in range(len(self)):
             image_id, image, _ = self.dataset[idx]
             yield image_id, image
+
+    def __getitem__(self, index: int) -> Tuple[int, np.ndarray]:
+        """支持索引访问，返回 (image_id, image)"""
+        image_id, image, _ = self.dataset[index]
+        return image_id, image
 
     def get_sample(self, index: int) -> Tuple[int, np.ndarray]:
         image_id, image, _ = self.dataset[index]

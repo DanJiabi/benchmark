@@ -2,6 +2,18 @@
 
 基于 COCO 数据集的目标检测模型性能基准测试项目。
 
+## 📚 文档导航
+
+| 文档 | 说明 |
+|------|------|
+| **本文档** | 快速开始和完整功能介绍 |
+| [examples/](examples/) | 使用示例和快速开始指南 |
+| [docs/ADD_CUSTOM_MODEL.md](docs/ADD_CUSTOM_MODEL.md) | 添加自定义模型指南 |
+| [docs/ANALYSIS_USAGE.md](docs/ANALYSIS_USAGE.md) | 模型对比分析使用指南 |
+| [docs/EXPORT_GUIDE.md](docs/EXPORT_GUIDE.md) | 模型导出指南 (ONNX/TensorRT) |
+| [docs/FORMAT_COMPARISON.md](docs/FORMAT_COMPARISON.md) | 格式性能对比指南 |
+| [CHANGELOG.md](CHANGELOG.md) | 版本更新历史 |
+
 ## 📦 Installation
 
 ### Quick Install (Editable Mode - Recommended)
@@ -32,8 +44,6 @@ conda activate benchmark
 # No pip install needed - just run scripts directly
 python benchmark.py --model yolov8n
 ```
-
-> **Note**: For detailed installation instructions, see [INSTALLATION.md](INSTALLATION.md)
 
 ## ✨ 特性
 
@@ -84,8 +94,6 @@ python benchmark.py --model yolov8n --num-images 10
 # 自动设置 PYTORCH_ENABLE_MPS_FALLBACK 环境变量
 ./run_benchmark.sh --model yolov8n --num-images 10
 ```
-
-> **详细安装说明**: 请参阅 [INSTALLATION.md](INSTALLATION.md)
 
 ### 2. 下载模型权重
 
@@ -257,8 +265,16 @@ benchmark/
 ├── scripts/               # 工具脚本
 │   ├── download_weights.py  # 权重下载工具
 │   └── test_installation.py # 安装验证脚本
-├── examples/               # 示例代码
-│   └── visualize_clean.py # 可视化示例
+├── examples/               # 示例代码和文档
+│   ├── quick_start.py       # 快速开始指南
+│   ├── benchmark_example.py # 基准测试示例
+│   ├── analyze_example.py   # 模型对比示例
+│   ├── export_example.py    # 模型导出示例
+│   ├── compare_example.py   # 格式对比示例
+│   ├── compare_pt_onnx.py   # PyTorch vs ONNX 对比工具
+│   ├── visualize_clean.py   # 可视化工具
+│   ├── README.md            # 示例目录说明
+│   └── COMPARE_PT_ONNX.md   # 格式对比详细文档
 ├── src/                   # 源代码
 │   ├── models/            # 模型定义
 │   │   ├── base.py       # 基类和接口
@@ -391,6 +407,8 @@ python benchmark.py --all
 
 ## 📖 使用示例
 
+> 💡 **提示**: 查看更多详细示例，请访问 [examples/](examples/) 目录，包含快速开始指南和所有核心功能的完整示例。
+
 ### 基础使用
 
 ```bash
@@ -405,6 +423,25 @@ od-benchmark benchmark --model yolov8n --model yolov8s
 
 # 生成可视化
 od-benchmark benchmark --model yolov8n --visualize --num-viz-images 20
+```
+
+### 更多示例
+
+```bash
+# 查看所有示例
+python examples/quick_start.py
+
+# 运行基准测试示例
+python examples/benchmark_example.py
+
+# 运行模型对比示例
+python examples/analyze_example.py
+
+# 运行模型导出示例
+python examples/export_example.py
+
+# 运行格式对比示例
+python examples/compare_example.py
 ```
 
 ### 生成可视化

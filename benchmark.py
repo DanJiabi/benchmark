@@ -71,6 +71,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 from src.utils.logger import Config, setup_logger
+from src.data.coco_dataset import COCOInferenceDataset
 
 try:
     config = Config(args.config)
@@ -96,7 +97,7 @@ dataset_path = dataset_config["path"]
 split = dataset_config["split"]
 
 logger.info(f"加载数据集: {dataset_path}/{split}")
-logger.info(f"数据集大小: {len(COCOInferenceDataset(dataset_path, split)) 张图片")
+logger.info(f"数据集大小: {len(COCOInferenceDataset(dataset_path, split))} 张图片")
 
 models_config = config.get_models_config()
 eval_config = config.get_evaluation_config()
@@ -171,6 +172,7 @@ def run_single_model(
             logger.info(f"下载模型权重: {weights_url}")
             try:
                 from src.utils.logger import download_model_weights
+
                 download_model_weights(weights_url, weights_path)
             except Exception as e:
                 logger.error(f"❌ 模型下载失败: {model_name}")
@@ -213,11 +215,11 @@ def run_single_model(
     all_detections = {}
     perf_metrics = PerformanceMetrics()
 
-    total_images = max_images
+    total_images = max_images if max_images is not None else len(dataset)
     logger.info(f"将处理 {total_images} 张图片")
 
     for idx, (image_id, image) in enumerate(dataset):
-        if idx >= total_images:
+        if max_images is not None and idx >= max_images:
             break
 
         try:
@@ -233,9 +235,7 @@ def run_single_model(
             continue
 
         if visualize and vis_dir and idx < num_viz_images:
-            viz_filename = (
-                f"{model_name}_vis_{idx:04d}_{image_id:012d}.jpg"
-            )
+            viz_filename = f"{model_name}_vis_{idx:04d}_{image_id:012d}.jpg"
             viz_path = vis_dir / viz_filename
 
             class_names = model_info.get("model_yaml", {}).get("names", {})
@@ -250,7 +250,9 @@ def run_single_model(
                     image, detections, class_names, viz_path, max_boxes=10
                 )
                 if idx == 0 or idx % 20 == 0:
-                    logger.info(f"    已保存可视化: {viz_filename} ({num_boxes} 个检测框)")
+                    logger.info(
+                        f"    已保存可视化: {viz_filename} ({num_boxes} 个检测框)"
+                    )
             except Exception as e:
                 logger.warning(f"    可视化失败: {viz_filename}")
                 logger.warning(f"    错误: {e}")
@@ -299,10 +301,14 @@ def benchmark_main():
 
     parser = argparse.ArgumentParser(description="目标检测模型性能基准测试")
 
-    parser.add_argument("--config", type=str, default="config.yaml", help="配置文件路径")
+    parser.add_argument(
+        "--config", type=str, default="config.yaml", help="配置文件路径"
+    )
     parser.add_argument("--model", type=str, action="append", help="指定要测试的模型")
     parser.add_argument("--all", action="store_true", help="测试所有配置的模型")
-    parser.add_argument("--output-dir", type=str, default="outputs/results", help="输出目录")
+    parser.add_argument(
+        "--output-dir", type=str, default="outputs/results", help="输出目录"
+    )
     parser.add_argument(
         "--visualize",
         action="store_true",
@@ -351,8 +357,11 @@ def benchmark_main():
     dataset_path = dataset_config["path"]
     split = dataset_config["split"]
 
+    from src.data.coco_dataset import COCOInferenceDataset
+    from src.metrics.coco_metrics import COCOMetrics
+
     logger.info(f"加载数据集: {dataset_path}/{split}")
-    logger.info(f"数据集大小: {len(COCOInferenceDataset(dataset_path, split)) 张图片")
+    logger.info(f"数据集大小: {len(COCOInferenceDataset(dataset_path, split))} 张图片")
 
     annotations_file = (
         Path(dataset_path).expanduser() / "annotations" / f"instances_{split}.json"
@@ -376,10 +385,6 @@ def benchmark_main():
                     models_to_test.append(model_cfg)
                     break
     else:
-        logger.error(f"未找到模型: {model_name}")
-                logger.info(f"可用的模型: {', '.join([m['name'] for m in models_config])}")
-                sys.exit(1)
-    else:
         logger.error("请使用 --model <model_name> 或 --all 指定要测试的模型")
         logger.info(f"可用的模型: {', '.join([m['name'] for m in models_config])}")
         sys.exit(1)
@@ -393,7 +398,11 @@ def benchmark_main():
 
     from src.models import create_model, load_model_wrapper
     from src.data.coco_dataset import COCOInferenceDataset
-    from src.metrics.coco_metrics import COCOMetrics, PerformanceMetrics, MetricsAggregator
+    from src.metrics.coco_metrics import (
+        COCOMetrics,
+        PerformanceMetrics,
+        MetricsAggregator,
+    )
     from src.utils.visualization import (
         save_detection_visualization,
         plot_metrics_comparison,
@@ -410,7 +419,7 @@ def benchmark_main():
             COCOInferenceDataset(dataset_path, split),
             annotations_file,
             COCOMetrics(annotations_file),
-            None,
+            logger,
             max_images,
             conf_threshold,
             args.visualize,
@@ -477,8 +486,6 @@ def benchmark_main():
         logger.info(f"指标对比图已保存: {figures_dir / 'metrics_comparison.png'}")
     except Exception as e:
         logger.error(f"❌ 生成指标对比图失败: {e}")
-    except Exception as e:
-        logger.error(f"❌ 生成指标对比图失败: {e}")
 
     try:
         plot_fps_vs_map(all_results, str(figures_dir / "fps_vs_map.png"))
@@ -490,7 +497,9 @@ def benchmark_main():
         plot_model_size_vs_performance(
             all_results, str(figures_dir / "size_vs_performance.png")
         )
-        logger.info(f"模型大小 vs 性能图已保存: {figures_dir / 'size_vs_performance.png'}")
+        logger.info(
+            f"模型大小 vs 性能图已保存: {figures_dir / 'size_vs_performance.png'}"
+        )
     except Exception as e:
         logger.error(f"❌ 生成模型大小 vs 性能图失败: {e}")
 

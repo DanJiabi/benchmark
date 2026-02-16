@@ -4,7 +4,7 @@ ONNX 模型推理支持
 提供 ONNX Runtime 推理能力，支持与 PyTorch 模型的性能对比
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 import numpy as np
 
@@ -100,6 +100,15 @@ class ONNXModel(BaseModel):
 
         # 默认使用 CPU
         return ["CPUExecutionProvider"]
+
+    def _get_model_input_size(self) -> Tuple[int, int]:
+        """获取模型输入尺寸 (H, W)"""
+        if self.input_shape and len(self.input_shape) >= 4:
+            # 输入形状: [batch, channels, height, width]
+            h = self.input_shape[2] if isinstance(self.input_shape[2], int) else 640
+            w = self.input_shape[3] if isinstance(self.input_shape[3], int) else 640
+            return (h, w)
+        return (640, 640)  # 默认尺寸
 
     def _load_class_names(self, model_path: Path) -> Dict[int, str]:
         """尝试从 ONNX 模型加载类别名称"""
@@ -286,8 +295,11 @@ class ONNXModel(BaseModel):
         """
         后处理 ONNX 输出
 
-        注意：这是一个简化的后处理，适用于性能测试。
-        实际生产环境应使用完整的 NMS 后处理。
+        支持多种 YOLO ONNX 输出格式：
+        1. YOLOv8/v9: [batch, 84, num_anchors] - 需要转置并计算类别分数
+           84 = 4 (bbox: x, y, w, h) + 80 (class scores)
+        2. YOLOv10: [batch, num_predictions, 6] - 已包含NMS和置信度
+           6 = [x1, y1, x2, y2, conf, class_id]
 
         Args:
             outputs: ONNX 模型输出
@@ -299,54 +311,330 @@ class ONNXModel(BaseModel):
         """
         detections = []
 
-        # YOLOv8 ONNX 输出格式: [batch, num_predictions, 84] (80 classes + 4 bbox)
-        # 简化处理：返回一些虚拟检测框用于性能测试
-        # 在实际场景中，应该使用 ultralytics 的 NMS 或 onnxruntime 的 NMS
+        if len(outputs) == 0:
+            return detections
 
-        if len(outputs) > 0:
-            predictions = outputs[0]
+        predictions = outputs[0]
 
-            # 处理输出
-            if len(predictions.shape) == 3:
-                predictions = predictions[0]  # 移除 batch 维度
+        # 处理 batch 维度
+        if len(predictions.shape) == 3:
+            predictions = predictions[0]
 
-            # 查找高置信度的检测
-            # 对于 YOLO 格式 [num_predictions, 84]
-            # 84 = x, y, w, h + 80 classes
-            if predictions.shape[1] >= 5:
-                for i in range(min(10, predictions.shape[0])):  # 最多取10个
-                    pred = predictions[i]
+        # 检查预测数量和维度
+        if len(predictions.shape) < 2:
+            return detections
 
-                    # 提取边界框 (假设前4个是 x, y, w, h)
-                    x, y, w, h = pred[0], pred[1], pred[2], pred[3]
+        # 检测输出格式
+        # YOLOv8/v9 格式: [84, num_anchors] (如 [84, 8400])
+        # YOLOv10 格式: [num_predictions, 6] (如 [300, 6])
+        # 区别：YOLOv8/v9 的 num_anchors 很大，YOLOv10 的 num_predictions 较小
 
-                    # 提取类别置信度
-                    if predictions.shape[1] > 4:
-                        class_scores = pred[4:]
-                        class_id = int(np.argmax(class_scores))
-                        conf = float(class_scores[class_id])
-                    else:
-                        class_id = 0
-                        conf = 0.5
+        shape = predictions.shape
+        if shape[1] > 1000:  # 第二维很大，是 YOLOv8/v9 格式 [84, 8400]
+            # YOLOv8/v9 格式: [84, num_anchors] -> [num_anchors, 84]
+            predictions = predictions.T
+            return self._postprocess_yolov8(predictions, conf_threshold, original_shape)
+        elif shape[0] > 1000:  # 第一维很大，已经是 [num_anchors, 84]
+            return self._postprocess_yolov8(predictions, conf_threshold, original_shape)
+        else:
+            # YOLOv10 格式: [num_predictions, 6]
+            return self._postprocess_yolov10(
+                predictions, conf_threshold, original_shape
+            )
 
-                    # 只保留高置信度的检测
-                    if conf >= conf_threshold:
-                        # 转换为 xyxy 格式并缩放到原图尺寸
-                        scale_x = original_shape[1] / 640.0
-                        scale_y = original_shape[0] / 640.0
+    def _postprocess_yolov8(
+        self, predictions: np.ndarray, conf_threshold: float, original_shape: tuple
+    ) -> List[Detection]:
+        """
+        处理 YOLOv8/v9 格式的 ONNX 输出
+        格式: [num_anchors, 84]
+        其中 84 = 4 (bbox: x, y, w, h) + 80 (class scores)
+        """
+        detections = []
 
-                        x1 = max(0, (x - w / 2) * scale_x)
-                        y1 = max(0, (y - h / 2) * scale_y)
-                        x2 = min(original_shape[1], (x + w / 2) * scale_x)
-                        y2 = min(original_shape[0], (y + h / 2) * scale_y)
+        if len(predictions.shape) != 2:
+            return detections
 
-                        if x2 > x1 and y2 > y1:
-                            detection = Detection(
-                                bbox=[float(x1), float(y1), float(x2), float(y2)],
-                                confidence=conf,
-                                class_id=class_id,
-                            )
-                            detections.append(detection)
+        num_anchors = predictions.shape[0]
+        num_values = predictions.shape[1]
+
+        if num_values < 5:
+            return detections
+
+        # 获取模型输入尺寸
+        model_h, model_w = self._get_model_input_size()
+
+        for i in range(num_anchors):
+            pred = predictions[i]
+
+            # YOLOv8/v9: [x_center, y_center, w, h, class0_score, class1_score, ...]
+            x_center, y_center, w, h = pred[0], pred[1], pred[2], pred[3]
+
+            # 计算类别分数
+            if num_values > 4:
+                class_scores = pred[4:]
+                class_id = int(np.argmax(class_scores))
+                conf = float(class_scores[class_id])
+            else:
+                class_id = 0
+                conf = 0.0
+
+            # 置信度过滤
+            if conf < conf_threshold:
+                continue
+
+            # 转换为 xyxy 格式
+            x1 = x_center - w / 2
+            y1 = y_center - h / 2
+            x2 = x_center + w / 2
+            y2 = y_center + h / 2
+
+            # 限制在模型输出尺寸内
+            x1 = max(0, min(model_w, x1))
+            y1 = max(0, min(model_h, y1))
+            x2 = max(0, min(model_w, x2))
+            y2 = max(0, min(model_h, y2))
+
+            # 过滤太小的框
+            if x2 - x1 < 1 or y2 - y1 < 1:
+                continue
+
+            # 缩放到原图尺寸
+            orig_h, orig_w = original_shape[:2]
+            scale_x = orig_w / model_w
+            scale_y = orig_h / model_h
+
+            x1_scaled = x1 * scale_x
+            y1_scaled = y1 * scale_y
+            x2_scaled = x2 * scale_x
+            y2_scaled = y2 * scale_y
+
+            # 限制在原图尺寸内
+            x1_scaled = max(0, min(orig_w, x1_scaled))
+            y1_scaled = max(0, min(orig_h, y1_scaled))
+            x2_scaled = max(0, min(orig_w, x2_scaled))
+            y2_scaled = max(0, min(orig_h, y2_scaled))
+
+            # 确保有效的框
+            if x2_scaled > x1_scaled and y2_scaled > y1_scaled:
+                detections.append(
+                    Detection(
+                        bbox=[
+                            float(x1_scaled),
+                            float(y1_scaled),
+                            float(x2_scaled),
+                            float(y2_scaled),
+                        ],
+                        confidence=float(conf),
+                        class_id=int(class_id),
+                    )
+                )
+
+        return detections
+
+    def _postprocess_yolov10(
+        self, predictions: np.ndarray, conf_threshold: float, original_shape: tuple
+    ) -> List[Detection]:
+        """
+        处理 YOLOv10 格式的 ONNX 输出
+        格式: [num_predictions, 6]
+        其中 6 = [x1, y1, x2, y2, conf, class_id]
+        """
+        detections = []
+
+        if len(predictions.shape) != 2:
+            return detections
+
+        num_preds = predictions.shape[0]
+        num_values = predictions.shape[1]
+
+        # YOLOv10 格式需要至少 6 个值
+        if num_values < 6:
+            return detections
+
+        # 获取模型输入尺寸
+        model_h, model_w = self._get_model_input_size()
+
+        for i in range(num_preds):
+            pred = predictions[i]
+
+            # YOLOv10: [x1, y1, x2, y2, conf, class_id]
+            x1, y1, x2, y2, conf, class_id = (
+                pred[0],
+                pred[1],
+                pred[2],
+                pred[3],
+                pred[4],
+                pred[5],
+            )
+
+            # 置信度过滤
+            if conf < conf_threshold:
+                continue
+
+            # 限制在模型输出尺寸内
+            x1 = max(0, min(model_w, x1))
+            y1 = max(0, min(model_h, y1))
+            x2 = max(0, min(model_w, x2))
+            y2 = max(0, min(model_h, y2))
+
+            # 过滤太小的框
+            if x2 - x1 < 1 or y2 - y1 < 1:
+                continue
+
+            # 缩放到原图尺寸
+            orig_h, orig_w = original_shape[:2]
+            scale_x = orig_w / model_w
+            scale_y = orig_h / model_h
+
+            x1_scaled = x1 * scale_x
+            y1_scaled = y1 * scale_y
+            x2_scaled = x2 * scale_x
+            y2_scaled = y2 * scale_y
+
+            # 限制在原图尺寸内
+            x1_scaled = max(0, min(orig_w, x1_scaled))
+            y1_scaled = max(0, min(orig_h, y1_scaled))
+            x2_scaled = max(0, min(orig_w, x2_scaled))
+            y2_scaled = max(0, min(orig_h, y2_scaled))
+
+            # 确保有效的框
+            if x2_scaled > x1_scaled and y2_scaled > y1_scaled:
+                detections.append(
+                    Detection(
+                        bbox=[
+                            float(x1_scaled),
+                            float(y1_scaled),
+                            float(x2_scaled),
+                            float(y2_scaled),
+                        ],
+                        confidence=float(conf),
+                        class_id=int(class_id),
+                    )
+                )
+
+        return detections
+
+        predictions = outputs[0]
+
+        # 处理 batch 维度
+        if len(predictions.shape) == 3:
+            predictions = predictions[0]
+
+        # 检查预测数量和维度
+        if len(predictions.shape) < 2:
+            return detections
+
+        num_preds = predictions.shape[0]
+        num_values = predictions.shape[1]
+
+        # YOLO 格式需要至少 6 个值
+        if num_values < 6:
+            return detections
+
+        # 处理每个预测
+        for i in range(num_preds):
+            pred = predictions[i]
+
+            # 提取值
+            x, y, w_or_x2, h_or_y2, conf, class_id = pred[:6]
+
+            # 置信度过滤
+            if conf < conf_threshold:
+                continue
+
+            # 根据 YOLO 版本解析坐标
+            # 方式 1: [x, y, w, h, conf, class] - 中心点 + 宽高
+            # 方式 2: [x1, y1, x2, y2, conf, class] - 左上角 + 右下角
+
+            # 检测格式：通过 w/h 是否为负数或超过图像尺寸来判断
+            # 对于角点格式：x1, y1, x2, y2 应该满足 0 <= x1 < x2 <= 640
+            # 对于中心点格式：x, y, w, h 应该满足 0 <= x < 640, w > 0
+
+            model_h, model_w = 640, 640
+
+            # 尝试两种格式，选择合理的一种
+            # 格式 1: 中心点 [x, y, w, h]
+            x1_center = x - w_or_x2 / 2
+            y1_center = y - h_or_y2 / 2
+            x2_center = x + w_or_x2 / 2
+            y2_center = y + h_or_y2 / 2
+
+            # 格式 2: 角点 [x1, y1, x2, y2]
+            x1_corner = x
+            y1_corner = y
+            x2_corner = w_or_x2
+            y2_corner = h_or_y2
+
+            # 判断哪种格式更合理
+            # 格式 1 检查：中心点应该在图像内，宽高应该为正
+            center_format_valid = (
+                0 <= x < model_w
+                and 0 <= y < model_h
+                and w_or_x2 > 0
+                and h_or_y2 > 0
+                and x1_center >= 0
+                and y1_center >= 0
+            )
+
+            # 格式 2 检查：x1 < x2, y1 < y2，且在合理范围内
+            corner_format_valid = (
+                x < x2
+                and y < y2
+                and x2 <= model_w * 1.1  # 允许稍微超出
+                and y2 <= model_h * 1.1
+            )
+
+            if center_format_valid:
+                # 使用中心点格式
+                x1, y1, x2, y2 = x1_center, y1_center, x2_center, y2_center
+            elif corner_format_valid:
+                # 使用角点格式
+                x1, y1, x2, y2 = x1_corner, y1_corner, x2_corner, y2_corner
+            else:
+                # 都不合理，跳过
+                continue
+
+            # 限制在模型输出尺寸内
+            x1 = max(0, min(model_w, x1))
+            y1 = max(0, min(model_h, y1))
+            x2 = max(0, min(model_w, x2))
+            y2 = max(0, min(model_h, y2))
+
+            # 过滤太小的框（可能是误检）
+            if x2 - x1 < 1 or y2 - y1 < 1:
+                continue
+
+            # 缩放到原图尺寸
+            orig_h, orig_w = original_shape[:2]
+            scale_x = orig_w / model_w
+            scale_y = orig_h / model_h
+
+            x1_scaled = x1 * scale_x
+            y1_scaled = y1 * scale_y
+            x2_scaled = x2 * scale_x
+            y2_scaled = y2 * scale_y
+
+            # 限制在原图尺寸内
+            x1_scaled = max(0, min(orig_w, x1_scaled))
+            y1_scaled = max(0, min(orig_h, y1_scaled))
+            x2_scaled = max(0, min(orig_w, x2_scaled))
+            y2_scaled = max(0, min(orig_h, y2_scaled))
+
+            # 确保有效的框
+            if x2_scaled > x1_scaled and y2_scaled > y1_scaled:
+                detections.append(
+                    Detection(
+                        bbox=[
+                            float(x1_scaled),
+                            float(y1_scaled),
+                            float(x2_scaled),
+                            float(y2_scaled),
+                        ],
+                        confidence=float(conf),
+                        class_id=int(class_id),
+                    )
+                )
 
         return detections
 

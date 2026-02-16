@@ -218,15 +218,19 @@ def generate_results_table(
     if metrics is None:
         metrics = ["AP@0.50", "AP@0.50:0.95", "fps", "params"]
 
+    # 处理空结果
+    if not results:
+        return pd.DataFrame(columns=["Model"] + metrics).set_index("Model")
+
     table_data = []
 
     for name, result in results.items():
         row = {"Model": name}
 
         for metric in metrics:
-            if metric in result["coco_metrics"]:
+            if metric in result.get("coco_metrics", {}):
                 row[metric] = f"{result['coco_metrics'][metric]:.4f}"
-            elif metric in result["performance"]:
+            elif metric in result.get("performance", {}):
                 row[metric] = f"{result['performance'][metric]:.2f}"
             elif metric == "params" and "model_info" in result:
                 row[metric] = f"{result['model_info'].get(metric, 0):.2f}M"
