@@ -6,65 +6,121 @@ dataset:
 output_dir: outputs/results
 
 models:
-  - name: yolov8n
+  # YOLO26 系列 (2026年1月发布，最新)
+  - name: yolo26n
     framework: ultralytics
-    weights: yolov8n.pt
-    url: https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n.pt
-  - name: yolov8s
+    weights: yolo26n.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n.pt
+  - name: yolo26s
     framework: ultralytics
-    weights: yolov8s.pt
-    url: https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s.pt
-  - name: yolov8m
+    weights: yolo26s.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s.pt
+  - name: yolo26m
     framework: ultralytics
-    weights: yolov8m.pt
-    url: https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8m.pt
-  - name: yolov8l
+    weights: yolo26m.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26m.pt
+  - name: yolo26l
     framework: ultralytics
-    weights: yolov8l.pt
-    url: https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8l.pt
-  - name: yolov8x
+    weights: yolo26l.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26l.pt
+  - name: yolo26x
     framework: ultralytics
-    weights: yolov8x.pt
-    url: https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8x.pt
-  - name: yolov9t
+    weights: yolo26x.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26x.pt
+
+  # YOLO11 系列 (2024年9月发布)
+  - name: yolo11n
     framework: ultralytics
-    weights: yolov9t.pt
-    url: https://github.com/ultralytics/assets/releases/download/v0.1.0/yolov9t.pt
-  - name: yolov9s
+    weights: yolo11n.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11n.pt
+  - name: yolo11s
     framework: ultralytics
-    weights: yolov9s.pt
-    url: https://github.com/ultralytics/assets/releases/download/v0.1.0/yolov9s.pt
-  - name: yolov9m
+    weights: yolo11s.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11s.pt
+  - name: yolo11m
     framework: ultralytics
-    weights: yolov9m.pt
-    url: https://github.com/ultralytics/assets/releases/download/v0.1.0/yolov9m.pt
+    weights: yolo11m.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11m.pt
+  - name: yolo11l
+    framework: ultralytics
+    weights: yolo11l.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11l.pt
+  - name: yolo11x
+    framework: ultralytics
+    weights: yolo11x.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11x.pt
+
+  # YOLOv10 系列 (2024年5月发布)
   - name: yolov10n
     framework: ultralytics
     weights: yolov10n.pt
-    url: https://github.com/ultralytics/assets/releases/download/v1.0.0/yolov10n.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov10n.pt
   - name: yolov10s
     framework: ultralytics
     weights: yolov10s.pt
-    url: https://github.com/ultralytics/assets/releases/download/v1.0.0/yolov10s.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov10s.pt
   - name: yolov10m
     framework: ultralytics
     weights: yolov10m.pt
-    url: https://github.com/ultralytics/assets/releases/download/v1.0.0/yolov10m.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov10m.pt
   - name: yolov10b
     framework: ultralytics
     weights: yolov10b.pt
-    url: https://github.com/ultralytics/assets/releases/download/v1.0.0/yolov10b.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov10b.pt
   - name: yolov10l
     framework: ultralytics
     weights: yolov10l.pt
-    url: https://github.com/ultralytics/assets/releases/download/v1.0.0/yolov10l.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov10l.pt
   - name: yolov10x
     framework: ultralytics
     weights: yolov10x.pt
-    url: https://github.com/ultralytics/assets/releases/download/v1.0.0/yolov10x.pt
-  - name: faster_rcnn
-    framework: torchvision
-    weights: null
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov10x.pt
+
+  # YOLOv9 系列 (2024年2月发布)
+  - name: yolov9t
+    framework: ultralytics
+    weights: yolov9t.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov9t.pt
+  - name: yolov9s
+    framework: ultralytics
+    weights: yolov9s.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov9s.pt
+  - name: yolov9m
+    framework: ultralytics
+    weights: yolov9m.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov9m.pt
+  - name: yolov9c
+    framework: ultralytics
+    weights: yolov9c.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov9c.pt
+  - name: yolov9e
+    framework: ultralytics
+    weights: yolov9e.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov9e.pt
+
+  # YOLOv8 系列 (2023年1月发布)
+  - name: yolov8n
+    framework: ultralytics
+    weights: yolov8n.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n.pt
+  - name: yolov8s
+    framework: ultralytics
+    weights: yolov8s.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8s.pt
+  - name: yolov8m
+    framework: ultralytics
+    weights: yolov8m.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8m.pt
+  - name: yolov8l
+    framework: ultralytics
+    weights: yolov8l.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8l.pt
+  - name: yolov8x
+    framework: ultralytics
+    weights: yolov8x.pt
+    url: https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8x.pt
+
+  # RT-DETR 系列 (百度 PaddlePaddle)
   - name: rtdetr-l
     framework: ultralytics
     weights: rtdetr-l.pt
@@ -73,6 +129,11 @@ models:
     framework: ultralytics
     weights: rtdetr-x.pt
     url: https://github.com/ultralytics/assets/releases/download/v8.4.0/rtdetr-x.pt
+
+  # Faster R-CNN (torchvision)
+  - name: faster_rcnn
+    framework: torchvision
+    weights: null
 
 evaluation:
   batch_size: 32

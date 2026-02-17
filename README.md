@@ -28,6 +28,12 @@ conda activate benchmark
 # Install in editable mode
 pip install -e .
 
+# Optional: Install ONNX support for model export and inference
+pip install -e ".[onnx]"
+
+# Optional: Install all optional dependencies (dev + onnx)
+pip install -e ".[all]"
+
 # Verify installation
 python test_installation.py
 ```

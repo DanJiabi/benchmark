@@ -158,16 +158,15 @@ def run_single_model(
 
     logger.info(f"开始评估模型: {model_name}")
 
-    try:
-        model = create_model(model_name, device="auto", conf_threshold=conf_threshold)
-    except ValueError as e:
-        logger.error(f"❌ 不支持的模型类型: {model_name}")
-        logger.error(f"   错误: {e}")
-        return None
-
+    # 处理权重路径
     weights_path = None
     if weights_file:
-        weights_path = Path("models_cache") / weights_file
+        # 如果路径已经包含目录分隔符，说明是完整路径，直接使用
+        if "/" in weights_file or "\\" in weights_file:
+            weights_path = Path(weights_file)
+        else:
+            # 否则添加 models_cache 前缀
+            weights_path = Path("models_cache") / weights_file
         if weights_url and not weights_path.exists():
             logger.info(f"下载模型权重: {weights_url}")
             try:
@@ -181,15 +180,34 @@ def run_single_model(
                 logger.warning(f"   跳过该模型，继续测试其他模型")
                 return None
 
+    # 根据框架类型确定如何创建模型
+    try:
+        if framework == "onnx" and weights_path:
+            # ONNX 模型：直接使用权重路径创建
+            model = create_model(
+                str(weights_path), device="auto", conf_threshold=conf_threshold
+            )
+        else:
+            # 其他模型：使用模型名称创建
+            model = create_model(
+                model_name, device="auto", conf_threshold=conf_threshold
+            )
+    except ValueError as e:
+        logger.error(f"❌ 不支持的模型类型: {model_name}")
+        logger.error(f"   错误: {e}")
+        return None
+
     logger.info(
         f"加载模型权重: {weights_path if weights_path else '使用内置预训练权重'}"
     )
 
     try:
-        if weights_path:
-            load_model_wrapper(model, str(weights_path), model_name)
-        else:
-            model.load_model(None)
+        # ONNX 模型已经在 create_model 时加载，无需再次加载
+        if framework != "onnx":
+            if weights_path:
+                load_model_wrapper(model, str(weights_path), model_name)
+            else:
+                model.load_model(None)
     except FileNotFoundError:
         logger.error(f"❌ 模型文件不存在: {weights_path}")
         logger.error("   请检查文件路径或先下载模型权重")

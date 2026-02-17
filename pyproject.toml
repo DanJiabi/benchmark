@@ -52,6 +52,15 @@ dev = [
     "ruff>=0.1",
 ]
 
+onnx = [
+    "onnxruntime>=1.16.0",
+    "onnx>=1.15.0",
+]
+
+all = [
+    "od-benchmark[dev,onnx]",
+]
+
 [project.entry-points."console_scripts"]
 od-benchmark = "src.cli:main"
 

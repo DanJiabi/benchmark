@@ -14,7 +14,16 @@ from .exporters import (
 )
 
 
-ULTRALYTICS_MODELS = ["yolov8", "yolov9", "yolov10", "yolov11", "rtdetr", "rt-detr"]
+ULTRALYTICS_MODELS = [
+    "yolo26",
+    "yolo11",
+    "yolov8",
+    "yolov9",
+    "yolov10",
+    "yolov11",
+    "rtdetr",
+    "rt-detr",
+]
 
 SIMULATED_MODELS = ["simulated", "custom", "user"]
 
