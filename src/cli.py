@@ -46,21 +46,32 @@ def run_single_model(
 ) -> Optional[Dict[str, Any]]:
     model_name = model_config["name"]
     framework = model_config["framework"]
-    weights_file = model_config["weights"]
-    weights_url = model_config.get("url")
+
+    # 处理 ONNX 模型的路径
+    if framework == "onnx":
+        # ONNX 模型：直接使用 path 字段
+        weights_path = Path(model_config["path"])
+        weights_file = str(weights_path)
+        weights_url = None
+    else:
+        # PyTorch 模型：使用 weights 和 url 字段
+        weights_file = model_config["weights"]
+        weights_url = model_config.get("url")
+        weights_path = None
 
     logger.info(f"开始评估模型: {model_name}")
 
-    # 处理权重路径
-    weights_path = None
-    if weights_file:
+    # 处理权重路径（仅针对 PyTorch 模型）
+    if framework != "onnx" and weights_file:
         # 如果路径已经包含目录分隔符，说明是完整路径，直接使用
         if "/" in weights_file or "\\" in weights_file:
             weights_path = Path(weights_file)
         else:
             # 否则添加 models_cache 前缀
             weights_path = Path("models_cache") / weights_file
-        if weights_url and not weights_path.exists():
+
+        # 检查文件是否存在，如果不存在且提供了 URL，则下载
+        if not weights_path.exists() and weights_url:
             logger.info(f"下载模型权重: {weights_url}")
             try:
                 download_model_weights(weights_url, weights_path)
@@ -95,18 +106,24 @@ def run_single_model(
     try:
         # ONNX 模型已经在 create_model 时加载，无需再次加载
         if framework != "onnx":
-            if weights_path:
+            if weights_path and weights_path.exists():
                 load_model_wrapper(model, str(weights_path), model_name)
+            elif weights_path:
+                logger.error(f"❌ 模型文件不存在: {weights_path}")
+                logger.error("   请检查文件路径或先下载模型权重")
+                return None
             else:
                 model.load_model(None)
     except FileNotFoundError:
-        logger.error(f"❌ 模型文件不存在: {weights_path}")
-        logger.error("   请检查文件路径或先下载模型权重")
-        return None
+        if framework != "onnx":
+            logger.error(f"❌ 模型文件不存在: {weights_path}")
+            logger.error("   请检查文件路径或先下载模型权重")
+            return None
     except Exception as e:
         logger.error(f"❌ 模型加载失败: {e}")
         logger.error(f"   模型: {model_name}")
-        logger.error(f"   权重文件: {weights_path}")
+        if framework != "onnx":
+            logger.error(f"   权重文件: {weights_path}")
         return None
 
     model_info = model.get_model_info()
@@ -245,6 +262,13 @@ def benchmark_main(args=None):
             default=None,
             help="测试图片数量（默认: 全部数据）",
         )
+        parser.add_argument(
+            "--format",
+            type=str,
+            default="pytorch",
+            choices=["pytorch", "onnx"],
+            help="模型格式（默认: pytorch）",
+        )
 
         args = parser.parse_args()
 
@@ -303,27 +327,95 @@ def benchmark_main(args=None):
         logger.info(f"使用命令行指定的置信度阈值: {conf_threshold}")
 
     models_to_test = []
-    if args.all:
-        models_to_test = models_config
-    elif args.model:
-        for model_name in args.model:
-            if model_name.lower() == "all":
-                models_to_test = models_config
-                break
-            for model_cfg in models_config:
-                if model_cfg["name"] == model_name:
-                    models_to_test.append(model_cfg)
+
+    # 处理 ONNX 格式
+    if args.format == "onnx":
+        export_dir = Path("models_export")
+        if not export_dir.exists():
+            logger.error(f"ONNX 模型目录不存在: {export_dir}")
+            logger.error("请先运行以下命令导出 ONNX 模型:")
+            logger.error("  od-benchmark export --all-models --format onnx")
+            return
+
+        # 查找所有 ONNX 模型
+        onnx_files = sorted(export_dir.glob("*.onnx"))
+
+        if not onnx_files:
+            logger.error(f"在 {export_dir} 中未找到 ONNX 模型")
+            logger.error("请先运行以下命令导出 ONNX 模型:")
+            logger.error("  od-benchmark export --all-models --format onnx")
+            return
+
+        # 处理模型选择
+        if args.all:
+            # 测试所有 ONNX 模型
+            for onnx_file in onnx_files:
+                models_to_test.append(
+                    {
+                        "name": onnx_file.stem,
+                        "path": str(onnx_file),
+                        "framework": "onnx",
+                    }
+                )
+        elif args.model:
+            # 测试指定的 ONNX 模型
+            for model_name in args.model:
+                if model_name.lower() == "all":
+                    models_to_test = models_config
                     break
+                # 查找匹配的 ONNX 文件
+                matching_files = [
+                    f
+                    for f in onnx_files
+                    if f.stem == model_name or str(f).endswith(model_name)
+                ]
+                if matching_files:
+                    for f in matching_files:
+                        models_to_test.append(
+                            {
+                                "name": f.stem,
+                                "path": str(f),
+                                "framework": "onnx",
+                            }
+                        )
+                else:
+                    logger.warning(f"未找到 ONNX 模型: {model_name}")
+        else:
+            logger.error("请使用 --model <model_name> 或 --all 指定要测试的模型")
+            logger.info(f"可用的 ONNX 模型: {', '.join([f.stem for f in onnx_files])}")
+            return
+
+        if not models_to_test:
+            logger.error("未找到要测试的 ONNX 模型")
+            logger.info(f"可用的 ONNX 模型: {', '.join([f.stem for f in onnx_files])}")
+            return
+
+        logger.info(f"模型格式: ONNX")
+        logger.info(f"计划测试 {len(models_to_test)} 个 ONNX 模型")
     else:
-        logger.error("请使用 --model <model_name> 或 --all 指定要测试的模型")
-        logger.info("可用的模型: " + ", ".join([m["name"] for m in models_config]))
-        return
+        # 处理 PyTorch 格式
+        if args.all:
+            models_to_test = models_config
+        elif args.model:
+            for model_name in args.model:
+                if model_name.lower() == "all":
+                    models_to_test = models_config
+                    break
+                for model_cfg in models_config:
+                    if model_cfg["name"] == model_name:
+                        models_to_test.append(model_cfg)
+                        break
+        else:
+            logger.error("请使用 --model <model_name> 或 --all 指定要测试的模型")
+            logger.info("可用的模型: " + ", ".join([m["name"] for m in models_config]))
+            return
 
-    if not models_to_test:
-        logger.error("未找到要测试的模型")
-        return
+        if not models_to_test:
+            logger.error("未找到要测试的模型")
+            return
 
-    logger.info(f"计划测试 {len(models_to_test)} 个模型")
+        logger.info(f"模型格式: PyTorch")
+        logger.info(f"计划测试 {len(models_to_test)} 个模型")
 
     aggregator = MetricsAggregator()
 
@@ -976,6 +1068,13 @@ def main():
         type=str,
         default="outputs/results",
         help="Output directory (default: outputs/results)",
+    )
+    benchmark_parser.add_argument(
+        "--format",
+        type=str,
+        default="pytorch",
+        choices=["pytorch", "onnx"],
+        help="Model format (default: pytorch)",
     )
 
     # Analyze command
