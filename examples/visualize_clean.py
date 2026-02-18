@@ -17,6 +17,7 @@ from src.models.base import Detection
 from src.models import create_model, load_model_wrapper
 from src.utils.visualization import draw_detection_boxes
 from src.utils import resolve_model_path
+from examples.utils import load_model_for_demo
 
 import cv2
 import numpy as np
@@ -248,43 +249,16 @@ def create_comparison_thumbnails(
 def load_model(model_name: str, conf_threshold: float = CONFIDENCE_THRESHOLD) -> Any:
     """加载指定的模型"""
     try:
-        model = create_model(model_name, device="auto", conf_threshold=conf_threshold)
-
-        # 使用工具函数解析路径
-        model_key = model_name.lower()
-        if model_name.endswith(".onnx") or ":onnx" in model_key:
-            weights_path = Path(model_name.replace(":onnx", ""))
-        else:
-            weights_path = resolve_model_path(f"{model_name}.pt")
-
-        if weights_path.exists():
-            try:
-                load_model_wrapper(model, str(weights_path), model_name)
-                print(f"  ✅ 加载权重: {weights_path}")
-                return model, model_name
-            except Exception as e:
-                print(f"  ❌ 加载权重失败: {weights_path}")
-                print(f"  错误: {e}")
-                print("  ℹ️  跳过此模型")
-                return None, None
-        elif model_name.lower().startswith("faster"):
-            # FasterRCNN 支持 None（内置预训练权重）
-            try:
-                model.load_model(None)
-                print("  ✅ 使用内置权重")
-                return model, "FasterRCNN"
-            except Exception as e:
-                print(f"  ❌ 加载模型失败: {e}")
-                return None, None
-        else:
-            # 对于其他模型，如果权重文件不存在，则跳过
-            print(f"  ⚠️  权重文件不存在: {weights_path}")
-            print("  ℹ️  请先下载模型权重或使用其他模型")
-            return None, None
-
-    except ValueError as e:
-        print(f"❌ 不支持的模型: {model_name}")
-        print(f"  错误: {e}")
+        model, name = load_model_for_demo(
+            model_name, device="auto", conf_threshold=conf_threshold, verbose=False
+        )
+        print(f"  ✅ 加载模型: {name}")
+        return model, name
+    except FileNotFoundError as e:
+        print(f"  ⚠️  {e}")
+        return None, None
+    except Exception as e:
+        print(f"  ❌ 加载模型失败: {e}")
         return None, None
 
 
