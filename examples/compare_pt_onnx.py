@@ -46,39 +46,57 @@ def load_models(
     # 加载 PyTorch 模型
     print(f"\n[PyTorch] {pt_model_path}")
     try:
-        pt_model = create_model(
-            pt_model_path, device=device, conf_threshold=conf_threshold
-        )
-
         # 构建 PyTorch 权重路径
         pt_weights = None
-        if not Path(pt_model_path).exists():
-            # 检查 models_cache 目录
-            pt_weights_cache = Path("models_cache") / f"{pt_model_path}.pt"
+
+        # 检查是否是完整路径
+        if Path(pt_model_path).exists():
+            pt_weights = pt_model_path
+        else:
+            # 尝试在 models_cache 中查找
+            # 处理用户传入 yolov8m.pt 或 yolov8m 的情况
+            model_name = pt_model_path.replace(".pt", "")
+            pt_weights_cache = Path("models_cache") / f"{model_name}.pt"
             if pt_weights_cache.exists():
                 pt_weights = str(pt_weights_cache)
             else:
-                pt_weights = pt_model_path
-        else:
-            pt_weights = pt_model_path
+                # 也尝试原始路径
+                pt_weights_cache = Path("models_cache") / pt_model_path
+                if pt_weights_cache.exists():
+                    pt_weights = str(pt_weights_cache)
 
-        # 加载权重
-        if pt_weights and Path(pt_weights).exists():
-            load_model_wrapper(pt_model, pt_weights, pt_model_path)
+        if not pt_weights:
+            print(f"  ❌ 找不到模型文件: {pt_model_path}")
+            print(f"     检查路径: models_cache/{pt_model_path}")
+            return None, None, ""
+
+        # 创建并加载模型
+        pt_model = create_model(
+            Path(pt_weights).stem, device=device, conf_threshold=conf_threshold
+        )
+        load_model_wrapper(pt_model, pt_weights, Path(pt_weights).stem)
         print(f"  ✅ PyTorch 模型加载成功: {pt_model.__class__.__name__}")
         pt_info = pt_model.get_model_info()
         print(f"     类型: {pt_info.get('name', 'N/A')}")
     except Exception as e:
         print(f"  ❌ PyTorch 模型加载失败: {e}")
+        import traceback
+
+        traceback.print_exc()
         return None, None, ""
 
     # 加载 ONNX 模型
     print(f"\n[ONNX] {onnx_model_path}")
     try:
+        # 检查 ONNX 文件是否存在
+        if not Path(onnx_model_path).exists():
+            print(f"  ❌ ONNX 文件不存在: {onnx_model_path}")
+            return pt_model, None, ""
+
+        # 创建 ONNX 模型（会自动加载）
         onnx_model = create_model(
             onnx_model_path, device=device, conf_threshold=conf_threshold
         )
-        load_model_wrapper(onnx_model, onnx_model_path, onnx_model_path)
         print(f"  ✅ ONNX 模型加载成功: {onnx_model.__class__.__name__}")
         onnx_info = onnx_model.get_model_info()
         print(f"     类型: {onnx_info.get('name', 'N/A')}")
@@ -86,6 +104,9 @@ def load_models(
         print(f"     输入形状: {onnx_info.get('input_shape', 'N/A')}")
     except Exception as e:
         print(f"  ❌ ONNX 模型加载失败: {e}")
+        import traceback
+
+        traceback.print_exc()
         return pt_model, None, ""
 
     model_name = (
