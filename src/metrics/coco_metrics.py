@@ -16,8 +16,29 @@ class COCOMetrics:
     def compute_metrics(
         self, predictions: List[Dict[str, Any]], iou_threshold: float = 0.5
     ) -> Dict[str, float]:
+        if not predictions:
+            return {
+                "AP@0.50": 0.0,
+                "AP@0.50:0.95": 0.0,
+                "AP@0.75": 0.0,
+                "AP_small": 0.0,
+                "AP_medium": 0.0,
+                "AP_large": 0.0,
+                "AR1": 0.0,
+                "AR10": 0.0,
+                "AR100": 0.0,
+                "AR_small": 0.0,
+                "AR_medium": 0.0,
+                "AR_large": 0.0,
+            }
+
         coco_dt = self.coco_gt.loadRes(predictions)
         coco_eval = COCOeval(self.coco_gt, coco_dt, "bbox")
+
+        # 重要修复: 只评估有预测的图片
+        # 这避免了 --num-images 参数导致的 mAP 被低估问题
+        evaluated_img_ids = list(set(p["image_id"] for p in predictions))
+        coco_eval.params.imgIds = evaluated_img_ids
 
         coco_eval.evaluate()
         coco_eval.accumulate()
