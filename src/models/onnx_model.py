@@ -63,6 +63,10 @@ class ONNXModel(BaseModel):
         # 尝试加载类别名称
         self.names = self._load_class_names(model_path)
 
+        # 计算模型文件大小（MB）
+        model_size_bytes = model_path.stat().st_size
+        model_size_mb = model_size_bytes / (1024 * 1024)
+
         self.model_info = {
             "name": model_path.stem,
             "weights": str(model_path),
@@ -70,6 +74,7 @@ class ONNXModel(BaseModel):
             "format": "onnx",
             "input_shape": self.input_shape,
             "is_yolo": self._is_yolo,
+            "model_size_mb": round(model_size_mb, 2),  # 新增：模型文件大小
         }
 
     def _get_providers(self) -> List[str]:
@@ -644,6 +649,21 @@ class ONNXModel(BaseModel):
             return {}
 
         info = self.model_info.copy()
+
+        # 估算参数量：使用模型文件大小 / 4 作为粗略估算
+        # 因为 fp32 模型每个参数占 4 字节
+        # 注意：这只是一个粗略估算，ONNX 模型可能包含优化/压缩
+        if "model_size_mb" in info and "params" not in info:
+            # MB ≈ Million params（fp32 精度）
+            estimated_params = round(info["model_size_mb"], 2)
+            info["params"] = estimated_params
+
+        # 确保 model_size_mb 字段存在
+        if "model_size_mb" not in info and "weights" in info:
+            weights_path = Path(info["weights"])
+            if weights_path.exists():
+                model_size_bytes = weights_path.stat().st_size
+                info["model_size_mb"] = round(model_size_bytes / (1024 * 1024), 2)
 
         # 获取输入/输出信息
         info["inputs"] = [

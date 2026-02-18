@@ -168,9 +168,32 @@ def plot_model_size_vs_performance(
 
     for name, result in results.items():
         model_names.append(name)
-        params.append(result["model_info"].get("params", 0))
+
+        # 改进参数量默认值处理
+        param_value = result["model_info"].get("params", 0)
+        if param_value == 0 and "model_size_mb" in result["model_info"]:
+            # 如果没有参数量但有模型大小，使用大小作为估算
+            param_value = result["model_info"]["model_size_mb"]
+        elif param_value == 0 and "weights" in result["model_info"]:
+            # 如果也没有模型大小，尝试从权重文件计算
+            weights_path = Path(result["model_info"]["weights"])
+            if weights_path.exists():
+                model_size_bytes = weights_path.stat().st_size
+                model_size_mb = model_size_bytes / (1024 * 1024)
+                param_value = round(model_size_mb, 2)
+        params.append(param_value)
+
+        # 改进模型大小默认值处理
+        size_value = result["model_info"].get("model_size_mb", 0)
+        if size_value == 0 and "weights" in result["model_info"]:
+            # 如果没有模型大小但有权重文件路径，计算文件大小
+            weights_path = Path(result["model_info"]["weights"])
+            if weights_path.exists():
+                model_size_bytes = weights_path.stat().st_size
+                size_value = round(model_size_bytes / (1024 * 1024), 2)
+        sizes_mb.append(size_value)
+
         map_values.append(result["coco_metrics"]["AP@0.50"])
-        sizes_mb.append(result["model_info"].get("model_size_mb", params[-1] * 4))
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
 
