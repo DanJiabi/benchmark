@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.models import create_model, load_model_wrapper
 from src.models.base import Detection
 from src.utils.visualization import draw_detection_boxes
+from src.utils import resolve_model_path
 
 
 # 默认配置
@@ -46,35 +47,19 @@ def load_models(
     # 加载 PyTorch 模型
     print(f"\n[PyTorch] {pt_model_path}")
     try:
-        # 构建 PyTorch 权重路径
-        pt_weights = None
+        # 使用工具函数解析路径
+        pt_weights_path = resolve_model_path(pt_model_path)
 
-        # 检查是否是完整路径
-        if Path(pt_model_path).exists():
-            pt_weights = pt_model_path
-        else:
-            # 尝试在 models_cache 中查找
-            # 处理用户传入 yolov8m.pt 或 yolov8m 的情况
-            model_name = pt_model_path.replace(".pt", "")
-            pt_weights_cache = Path("models_cache") / f"{model_name}.pt"
-            if pt_weights_cache.exists():
-                pt_weights = str(pt_weights_cache)
-            else:
-                # 也尝试原始路径
-                pt_weights_cache = Path("models_cache") / pt_model_path
-                if pt_weights_cache.exists():
-                    pt_weights = str(pt_weights_cache)
-
-        if not pt_weights:
+        if not pt_weights_path.exists():
             print(f"  ❌ 找不到模型文件: {pt_model_path}")
-            print(f"     检查路径: models_cache/{pt_model_path}")
+            print(f"     检查路径: {pt_weights_path}")
             return None, None, ""
 
         # 创建并加载模型
         pt_model = create_model(
-            Path(pt_weights).stem, device=device, conf_threshold=conf_threshold
+            pt_weights_path.stem, device=device, conf_threshold=conf_threshold
         )
-        load_model_wrapper(pt_model, pt_weights, Path(pt_weights).stem)
+        load_model_wrapper(pt_model, str(pt_weights_path), pt_weights_path.stem)
         print(f"  ✅ PyTorch 模型加载成功: {pt_model.__class__.__name__}")
         pt_info = pt_model.get_model_info()
         print(f"     类型: {pt_info.get('name', 'N/A')}")

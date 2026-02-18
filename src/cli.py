@@ -30,6 +30,7 @@ from src.utils.visualization import (
     plot_model_size_vs_performance,
     generate_results_table,
 )
+from src.utils import resolve_model_path
 from src.analysis import ModelComparison
 
 
@@ -63,12 +64,8 @@ def run_single_model(
 
     # 处理权重路径（仅针对 PyTorch 模型）
     if framework != "onnx" and weights_file:
-        # 如果路径已经包含目录分隔符，说明是完整路径，直接使用
-        if "/" in weights_file or "\\" in weights_file:
-            weights_path = Path(weights_file)
-        else:
-            # 否则添加 models_cache 前缀
-            weights_path = Path("models_cache") / weights_file
+        # 使用工具函数解析路径
+        weights_path = resolve_model_path(weights_file)
 
         # 检查文件是否存在，如果不存在且提供了 URL，则下载
         if not weights_path.exists() and weights_url:

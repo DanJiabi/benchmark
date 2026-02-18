@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.models.base import Detection
 from src.models import create_model, load_model_wrapper
 from src.utils.visualization import draw_detection_boxes
+from src.utils import resolve_model_path
 
 import cv2
 import numpy as np
@@ -249,12 +250,12 @@ def load_model(model_name: str, conf_threshold: float = CONFIDENCE_THRESHOLD) ->
     try:
         model = create_model(model_name, device="auto", conf_threshold=conf_threshold)
 
-        # 自动检测权重文件扩展名
+        # 使用工具函数解析路径
         model_key = model_name.lower()
         if model_name.endswith(".onnx") or ":onnx" in model_key:
             weights_path = Path(model_name.replace(":onnx", ""))
         else:
-            weights_path = Path("models_cache") / f"{model_name}.pt"
+            weights_path = resolve_model_path(f"{model_name}.pt")
 
         if weights_path.exists():
             try:
