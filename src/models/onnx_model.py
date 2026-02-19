@@ -355,8 +355,8 @@ class ONNXModel(BaseModel):
             # 计算当前框与剩余框的 IoU
             ious = self._compute_ious(boxes[i], boxes[idxs[1:]])
 
-            # 过除 IoU 大于阈值的框
-            idxs = idxs[1:][ious < iou_threshold]
+            # 过除 IoU 大于阈值的框（修复：使用 <= 而不是 <）
+            idxs = idxs[1:][ious <= iou_threshold]
 
         return keep
 
