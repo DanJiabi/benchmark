@@ -14,7 +14,12 @@ from .base import BaseModel, Detection
 class ONNXModel(BaseModel):
     """ONNX 模型包装器"""
 
-    def __init__(self, device: str = "auto", conf_threshold: float = 0.001):
+    def __init__(
+        self,
+        device: str = "auto",
+        conf_threshold: float = 0.001,
+        iou_threshold: float = 0.45,
+    ):
         super().__init__(device, conf_threshold)
         self.session = None
         self.input_name = None
@@ -22,6 +27,7 @@ class ONNXModel(BaseModel):
         self.output_names = None
         self.names = {}
         self._is_yolo = False
+        self.iou_threshold = iou_threshold
 
     def load_model(self, model_path: str) -> None:
         """
@@ -294,6 +300,96 @@ class ONNXModel(BaseModel):
 
         return img
 
+    def _apply_nms(
+        self, detections: List[Detection], iou_threshold: float = None
+    ) -> List[Detection]:
+        """应用 NMS（非极大值抑制）到检测结果
+
+        Args:
+            detections: 检测框列表
+            iou_threshold: IOU 阈值，None 时使用默认值
+
+        Returns:
+            NMS 过滤后的检测框列表
+        """
+        if not detections:
+            return detections
+
+        import torch
+
+        if iou_threshold is None:
+            iou_threshold = self.iou_threshold
+
+        # 转换为 tensor
+        boxes = torch.tensor([det.bbox for det in detections], dtype=torch.float32)
+        scores = torch.tensor(
+            [det.confidence for det in detections], dtype=torch.float32
+        )
+
+        # 应用 NMS
+        try:
+            from torchvision.ops import nms
+
+            keep = nms(boxes, scores, iou_threshold)
+        except ImportError:
+            # 如果 torchvision 不可用，使用简化的 NMS
+            keep = self._simple_nms(boxes, scores, iou_threshold)
+
+        # 返回过滤后的检测结果
+        return [detections[i] for i in keep]
+
+    def _simple_nms(self, boxes, scores, iou_threshold: float):
+        """简化的 NMS 实现（当 torchvision 不可用时使用）"""
+        if len(boxes) == 0:
+            return []
+
+        # 按置信度降序排序
+        idxs = torch.argsort(scores, descending=True)
+
+        keep = []
+        while len(idxs) > 0:
+            # 保留最高置信度的框
+            i = idxs[0]
+            keep.append(i)
+
+            # 计算当前框与剩余框的 IoU
+            ious = self._compute_ious(boxes[i], boxes[idxs[1:]])
+
+            # 过除 IoU 大于阈值的框
+            idxs = idxs[1:][ious < iou_threshold]
+
+        return keep
+
+    def _compute_ious(self, box, boxes):
+        """计算一个框与多个框的 IoU
+
+        Args:
+            box: 单个框 [x1, y1, x2, y2]
+            boxes: 多个框 [N, 4]
+
+        Returns:
+            IoU 值数组 [N]
+        """
+        # 计算交集
+        x1 = torch.maximum(box[0], boxes[:, 0])
+        y1 = torch.maximum(box[1], boxes[:, 1])
+        x2 = torch.minimum(box[2], boxes[:, 2])
+        y2 = torch.minimum(box[3], boxes[:, 3])
+
+        inter_area = torch.maximum(torch.tensor(0), x2 - x1) * torch.maximum(
+            torch.tensor(0), y2 - y1
+        )
+
+        # 计算并集
+        box_area = (box[2] - box[0]) * (box[3] - box[1])
+        boxes_area = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+        union_area = box_area + boxes_area - inter_area
+
+        # 计算 IoU
+        ious = inter_area / (union_area + 1e-6)  # 添加小常数避免除零
+
+        return ious
+
     def _postprocess(
         self, outputs: List[np.ndarray], conf_threshold: float, original_shape: tuple
     ) -> List[Detection]:
@@ -431,9 +527,12 @@ class ONNXModel(BaseModel):
                             float(y2_scaled),
                         ],
                         confidence=float(conf),
-                        class_id=int(class_id),
+                        class_id=int(class_id) + 1,  # +1 转换为 COCO 类别（1-80）
                     )
                 )
+
+        # 应用 NMS
+        detections = self._apply_nms(detections)
 
         return detections
 
@@ -514,13 +613,14 @@ class ONNXModel(BaseModel):
                             float(y2_scaled),
                         ],
                         confidence=float(conf),
-                        class_id=int(class_id),
+                        class_id=int(class_id) + 1,  # +1 转换为 COCO 类别（1-80）
                     )
                 )
 
-        return detections
+        # 应用 NMS
+        detections = self._apply_nms(detections)
 
-        predictions = outputs[0]
+        return detections
 
         # 处理 batch 维度
         if len(predictions.shape) == 3:
