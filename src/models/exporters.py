@@ -244,7 +244,29 @@ class TensorRTExporter(ModelExporter):
 
 
 class ExportManager:
-    """导出管理器"""
+    """导出管理器 - 支持多种模型类型（YOLO、RT-DETR、Faster R-CNN）"""
+
+    @staticmethod
+    def _detect_model_type(model_path: str) -> str:
+        """
+        检测模型类型
+
+        Args:
+            model_path: 模型文件路径
+
+        Returns:
+            模型类型: 'ultralytics', 'faster_rcnn'
+        """
+        path = Path(model_path)
+        stem = path.stem.lower()
+
+        # Faster R-CNN
+        if "faster" in stem and "rcnn" in stem:
+            return "faster_rcnn"
+
+        # Ultralytics 模型（YOLO 系列、RT-DETR）
+        # 默认为 ultralytics（包括 RT-DETR）
+        return "ultralytics"
 
     @staticmethod
     def export_to_onnx(
@@ -254,19 +276,108 @@ class ExportManager:
         **kwargs,
     ) -> Dict[str, Any]:
         """
-        导出为 ONNX 格式的便捷方法
+        导出为 ONNX 格式的统一接口
 
         Args:
             model_path: 模型文件路径 (.pt)
             output_dir: 输出目录
             input_size: 输入图像尺寸
             **kwargs: 其他导出参数
+                - dynamic: 动态输入尺寸
+                - batch_size: 批处理大小
+                - device: 导出设备
+                - opset_version: ONNX opset 版本
+                - simplify: 是否简化 ONNX 模型
 
         Returns:
             导出结果
         """
-        exporter = ONNXExporter(model_path, output_dir, input_size)
-        return exporter.export(**kwargs)
+        model_type = ExportManager._detect_model_type(model_path)
+
+        if model_type == "faster_rcnn":
+            # Faster R-CNN 使用专门的导出方法
+            return ExportManager._export_faster_rcnn_to_onnx(
+                model_path, output_dir, input_size, **kwargs
+            )
+        else:
+            # Ultralytics 模型（YOLO、RT-DETR）
+            opset_version = kwargs.get("opset_version", 12)
+            simplify = kwargs.get("simplify", True)
+            exporter = ONNXExporter(
+                model_path, output_dir, input_size, opset_version, simplify
+            )
+
+            # 提取 export() 方法需要的参数
+            export_kwargs = {
+                k: v
+                for k, v in kwargs.items()
+                if k in ["dynamic", "batch_size", "device"]
+            }
+            return exporter.export(**export_kwargs)
+
+    @staticmethod
+    def _export_faster_rcnn_to_onnx(
+        model_path: str,
+        output_dir: str = "models_export",
+        input_size: Tuple[int, int] = (640, 640),
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """
+        导出 Faster R-CNN 为 ONNX 格式
+
+        Args:
+            model_path: 模型文件路径（None 表示使用 torchvision 预训练）
+            output_dir: 输出目录
+            input_size: 输入图像尺寸
+
+        Returns:
+            导出结果
+        """
+        from .faster_rcnn import FasterRCNN
+
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        onnx_path = output_path / "faster_rcnn.onnx"
+
+        try:
+            # 创建 Faster R-CNN 模型
+            model = FasterRCNN(device="cpu")
+
+            # 加载权重
+            if model_path and Path(model_path).exists():
+                model.load_model(model_path)
+            else:
+                model.load_model(None)  # 使用 torchvision 预训练权重
+
+            # 导出为 ONNX
+            result_path = model.export_to_onnx(
+                str(onnx_path),
+                input_size=input_size,
+                opset_version=kwargs.get("opset_version", 17),
+            )
+
+            result = {
+                "success": True,
+                "format": "onnx",
+                "output_path": result_path,
+                "model_path": model_path or "torchvision://fasterrcnn_resnet50_fpn",
+                "input_size": input_size,
+                "file_size_mb": Path(result_path).stat().st_size / (1024 * 1024),
+            }
+
+            logger.info(f"Faster R-CNN ONNX 导出成功: {result_path}")
+            logger.info(f"文件大小: {result['file_size_mb']:.2f} MB")
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Faster R-CNN ONNX 导出失败: {e}")
+            return {
+                "success": False,
+                "format": "onnx",
+                "error": str(e),
+                "model_path": model_path,
+            }
 
     @staticmethod
     def export_to_tensorrt(
@@ -346,6 +457,7 @@ def batch_export_models(
     int8: bool = False,
     batch_size: int = 1,
     device: str = "cpu",
+    include_faster_rcnn: bool = False,
 ) -> Dict[str, Any]:
     """
     批量导出多个模型
@@ -363,6 +475,7 @@ def batch_export_models(
         int8: INT8 量化
         batch_size: 批处理大小
         device: 设备
+        include_faster_rcnn: 是否导出 Faster R-CNN（torchvision 预训练）
 
     Returns:
         批量导出结果
@@ -385,6 +498,12 @@ def batch_export_models(
                 "success": False,
                 "error": f"Model directory not found: {model_dir}",
             }
+
+        # 添加 Faster R-CNN（如果请求）
+        if include_faster_rcnn:
+            models_to_export.append("faster_rcnn")
+            logger.info("添加 Faster R-CNN (torchvision 预训练)")
+
     elif model_paths:
         models_to_export = model_paths
     else:
@@ -500,7 +619,7 @@ def export_model_cli(
     device: str = "cpu",
 ) -> Dict[str, Any]:
     """
-    CLI 导出接口
+    CLI 导出接口 - 支持多种模型类型
 
     Args:
         model_path: 模型文件路径
@@ -525,6 +644,14 @@ def export_model_cli(
     logger.info(f"输出目录: {output_dir}")
     logger.info(f"输入尺寸: {input_size}")
 
+    # 检测模型类型
+    if model_path == "faster_rcnn":
+        model_type = "faster_rcnn"
+        logger.info("模型类型: Faster R-CNN (torchvision)")
+    else:
+        model_type = ExportManager._detect_model_type(model_path)
+        logger.info(f"模型类型: {model_type}")
+
     if format.lower() == "all":
         formats = ["onnx"]
         # TensorRT 需要 CUDA，只在有 CUDA 时添加
@@ -539,12 +666,17 @@ def export_model_cli(
 
         results = ExportManager.export_all(model_path, output_dir, input_size, formats)
     elif format.lower() in ["onnx", "onnxruntime"]:
-        exporter = ONNXExporter(
-            model_path, output_dir, input_size, opset_version=12, simplify=simplify
-        )
+        # 使用统一的导出接口（自动识别模型类型）
         results = {
-            "onnx": exporter.export(
-                dynamic=dynamic, batch_size=batch_size, device=device
+            "onnx": ExportManager.export_to_onnx(
+                model_path,
+                output_dir,
+                input_size,
+                dynamic=dynamic,
+                batch_size=batch_size,
+                device=device,
+                opset_version=12,
+                simplify=simplify,
             )
         }
     elif format.lower() in ["tensorrt", "trt", "engine"]:
