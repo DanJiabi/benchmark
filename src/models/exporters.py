@@ -301,7 +301,14 @@ class ExportManager:
             )
         else:
             # Ultralytics 模型（YOLO、RT-DETR）
-            opset_version = kwargs.get("opset_version", 12)
+            # RT-DETR 需要 opset 16+ (grid_sampler 操作)
+            path = Path(model_path)
+            is_rtdetr = "rtdetr" in path.stem.lower()
+
+            # 确定 opset 版本
+            default_opset = 16 if is_rtdetr else 12
+            opset_version = kwargs.get("opset_version", default_opset)
+
             simplify = kwargs.get("simplify", True)
             exporter = ONNXExporter(
                 model_path, output_dir, input_size, opset_version, simplify
@@ -667,6 +674,7 @@ def export_model_cli(
         results = ExportManager.export_all(model_path, output_dir, input_size, formats)
     elif format.lower() in ["onnx", "onnxruntime"]:
         # 使用统一的导出接口（自动识别模型类型）
+        # 不指定 opset_version，让 ExportManager 自动选择（RT-DETR 需要 16+）
         results = {
             "onnx": ExportManager.export_to_onnx(
                 model_path,
@@ -675,7 +683,6 @@ def export_model_cli(
                 dynamic=dynamic,
                 batch_size=batch_size,
                 device=device,
-                opset_version=12,
                 simplify=simplify,
             )
         }
