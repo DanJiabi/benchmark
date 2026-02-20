@@ -14,9 +14,10 @@ import cv2
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.models import create_model, load_model_wrapper
 from src.models.base import Detection
 from src.utils.visualization import draw_detection_boxes
+from src.utils import resolve_model_path
+from examples.utils import load_model_for_demo, print_demo_header, print_demo_footer
 
 
 # 默认配置
@@ -46,27 +47,11 @@ def load_models(
     # 加载 PyTorch 模型
     print(f"\n[PyTorch] {pt_model_path}")
     try:
-        pt_model = create_model(
-            pt_model_path, device=device, conf_threshold=conf_threshold
+        pt_model, pt_name = load_model_for_demo(
+            pt_model_path, device=device, conf_threshold=conf_threshold, verbose=False
         )
-
-        # 构建 PyTorch 权重路径
-        pt_weights = None
-        if not Path(pt_model_path).exists():
-            # 检查 models_cache 目录
-            pt_weights_cache = Path("models_cache") / f"{pt_model_path}.pt"
-            if pt_weights_cache.exists():
-                pt_weights = str(pt_weights_cache)
-            else:
-                pt_weights = pt_model_path
-        else:
-            pt_weights = pt_model_path
-
-        # 加载权重
-        if pt_weights and Path(pt_weights).exists():
-            load_model_wrapper(pt_model, pt_weights, pt_model_path)
-        print(f"  ✅ PyTorch 模型加载成功: {pt_model.__class__.__name__}")
         pt_info = pt_model.get_model_info()
+        print(f"  ✅ PyTorch 模型加载成功: {pt_model.__class__.__name__}")
         print(f"     类型: {pt_info.get('name', 'N/A')}")
     except Exception as e:
         print(f"  ❌ PyTorch 模型加载失败: {e}")
@@ -75,12 +60,11 @@ def load_models(
     # 加载 ONNX 模型
     print(f"\n[ONNX] {onnx_model_path}")
     try:
-        onnx_model = create_model(
-            onnx_model_path, device=device, conf_threshold=conf_threshold
+        onnx_model, onnx_name = load_model_for_demo(
+            onnx_model_path, device=device, conf_threshold=conf_threshold, verbose=False
         )
-        load_model_wrapper(onnx_model, onnx_model_path, onnx_model_path)
-        print(f"  ✅ ONNX 模型加载成功: {onnx_model.__class__.__name__}")
         onnx_info = onnx_model.get_model_info()
+        print(f"  ✅ ONNX 模型加载成功: {onnx_model.__class__.__name__}")
         print(f"     类型: {onnx_info.get('name', 'N/A')}")
         print(f"     格式: {onnx_info.get('format', 'N/A')}")
         print(f"     输入形状: {onnx_info.get('input_shape', 'N/A')}")
@@ -88,9 +72,7 @@ def load_models(
         print(f"  ❌ ONNX 模型加载失败: {e}")
         return pt_model, None, ""
 
-    model_name = (
-        Path(pt_model_path).stem if not pt_model_path.endswith(":onnx") else "model"
-    )
+    model_name = Path(pt_model_path).stem
     return pt_model, onnx_model, model_name
 
 

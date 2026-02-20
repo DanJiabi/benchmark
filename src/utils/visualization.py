@@ -185,7 +185,8 @@ def plot_model_size_vs_performance(
 
         # 改进模型大小默认值处理
         size_value = result["model_info"].get("model_size_mb", 0)
-        if size_value == 0 and "weights" in result["model_info"]:
+        # 检查 weights 是否存在且有效
+        if size_value == 0 and result["model_info"].get("weights"):
             # 如果没有模型大小但有权重文件路径，计算文件大小
             weights_path = Path(result["model_info"]["weights"])
             if weights_path.exists():
