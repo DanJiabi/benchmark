@@ -164,9 +164,9 @@ class TestONNXModelInputSize:
         load_model_wrapper(model, onnx_path, onnx_path)
 
         h, w = model._get_model_input_size()
-        # YOLOv9t 使用 320x320
-        assert h == 320
-        assert w == 320
+        # YOLOv9t 使用 640x640
+        assert h == 640
+        assert w == 640
 
 
 if __name__ == "__main__":
