@@ -4,11 +4,14 @@ ONNX 模型推理支持
 提供 ONNX Runtime 推理能力，支持与 PyTorch 模型的性能对比
 """
 
+import logging
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 import numpy as np
 
 from .base import BaseModel, Detection
+
+logger = logging.getLogger(__name__)
 
 
 class ONNXModel(BaseModel):
@@ -382,13 +385,42 @@ class ONNXModel(BaseModel):
         # 预处理
         input_tensor = self._preprocess(image)
 
-        # 推理
-        outputs = self.session.run(self.output_names, {self.input_name: input_tensor})
+        # 推理（如果 CoreML 失败，自动回退到 CPU）
+        try:
+            outputs = self.session.run(
+                self.output_names, {self.input_name: input_tensor}
+            )
+        except Exception as e:
+            # CoreML provider 可能对某些操作（如 GatherElements）不兼容
+            # 尝试回退到 CPU provider
+            if "CoreMLExecutionProvider" in self.session.get_providers():
+                logger.warning(f"CoreML 推理失败，回退到 CPU: {type(e).__name__}")
+                self._fallback_to_cpu()
+                outputs = self.session.run(
+                    self.output_names, {self.input_name: input_tensor}
+                )
+            else:
+                raise
 
         # 后处理
         detections = self._postprocess(outputs, conf, image.shape[:2])
 
         return detections
+
+    def _fallback_to_cpu(self) -> None:
+        """回退到 CPU provider（用于 CoreML 兼容性问题）"""
+        try:
+            import onnxruntime as ort
+        except ImportError:
+            return
+
+        # 重新创建会话，只使用 CPU
+        model_path = self.model_info.get("weights")
+        if model_path and Path(model_path).exists():
+            self.session = ort.InferenceSession(
+                model_path, providers=["CPUExecutionProvider"]
+            )
+            logger.info("已回退到 CPU provider")
 
     def _preprocess(self, image: np.ndarray) -> np.ndarray:
         """
