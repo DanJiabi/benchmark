@@ -4,11 +4,15 @@ ONNX 模型推理支持
 提供 ONNX Runtime 推理能力，支持与 PyTorch 模型的性能对比
 """
 
+import logging
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 import numpy as np
 
 from .base import BaseModel, Detection
+from ..utils.coco_utils import yolo_index_to_coco_id
+
+logger = logging.getLogger(__name__)
 
 
 class ONNXModel(BaseModel):
@@ -28,6 +32,8 @@ class ONNXModel(BaseModel):
         self.names = {}
         self._is_yolo = False
         self.iou_threshold = iou_threshold
+        self.model_type = None  # 'yolo', 'rtdetr', 'faster_rcnn'
+        self._cpu_session = None  # 缓存 CPU session 用于回退
 
     def load_model(self, model_path: str) -> None:
         """
@@ -63,8 +69,11 @@ class ONNXModel(BaseModel):
         # 获取输出信息
         self.output_names = [o.name for o in self.session.get_outputs()]
 
-        # 检测是否为 YOLO 模型
-        self._is_yolo = "yolo" in model_path.stem.lower()
+        # 检测模型类型
+        self.model_type = self._detect_model_type(model_path)
+
+        # 检测是否为 YOLO 模型（向后兼容）
+        self._is_yolo = self.model_type == "yolo"
 
         # 尝试加载类别名称
         self.names = self._load_class_names(model_path)
@@ -112,6 +121,42 @@ class ONNXModel(BaseModel):
         # 默认使用 CPU
         return ["CPUExecutionProvider"]
 
+    def _detect_model_type(self, model_path: Path) -> str:
+        """
+        检测 ONNX 模型类型
+
+        Args:
+            model_path: 模型文件路径
+
+        Returns:
+            模型类型: 'yolo', 'rtdetr', 'faster_rcnn'
+        """
+        stem = model_path.stem.lower()
+
+        # 1. 基于文件名检测
+        if "rtdetr" in stem or "rt-detr" in stem:
+            return "rtdetr"
+        elif "faster" in stem and "rcnn" in stem:
+            return "faster_rcnn"
+
+        # 2. 基于输出形状检测
+        outputs = self.session.get_outputs()
+
+        # Faster R-CNN: 多个输出 (boxes, labels, scores)
+        if len(outputs) >= 3:
+            return "faster_rcnn"
+
+        # RT-DETR: 单个输出 [batch, 300, 84]
+        if len(outputs) == 1:
+            output_shape = outputs[0].shape
+            if len(output_shape) == 3:
+                # RT-DETR 固定 300 个查询，每个查询 84 维
+                if output_shape[1] == 300 and output_shape[2] == 84:
+                    return "rtdetr"
+
+        # 默认为 YOLO
+        return "yolo"
+
     def _get_model_input_size(self) -> Tuple[int, int]:
         """获取模型输入尺寸 (H, W)"""
         if self.input_shape and len(self.input_shape) >= 4:
@@ -120,94 +165,6 @@ class ONNXModel(BaseModel):
             w = self.input_shape[3] if isinstance(self.input_shape[3], int) else 640
             return (h, w)
         return (640, 640)  # 默认尺寸
-
-    def _yolo_index_to_coco_id(self, yolo_index: int) -> int:
-        """将 YOLO 类别索引（0-79）映射到 COCO 类别 ID（1-90，不连续）"""
-        coco_id_mapping = [
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            13,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-            22,
-            23,
-            24,
-            25,
-            27,
-            28,
-            31,
-            32,
-            33,
-            34,
-            35,
-            36,
-            37,
-            38,
-            39,
-            40,
-            41,
-            42,
-            43,
-            44,
-            46,
-            47,
-            48,
-            49,
-            50,
-            51,
-            52,
-            53,
-            54,
-            55,
-            56,
-            57,
-            58,
-            59,
-            60,
-            61,
-            62,
-            63,
-            64,
-            65,
-            67,
-            70,
-            72,
-            73,
-            74,
-            75,
-            76,
-            77,
-            78,
-            79,
-            80,
-            81,
-            82,
-            84,
-            85,
-            86,
-            87,
-            88,
-            89,
-            90,
-        ]
-        if 0 <= yolo_index < len(coco_id_mapping):
-            return coco_id_mapping[yolo_index]
-        return yolo_index + 1  # 默认值
 
     def _load_class_names(self, model_path: Path) -> Dict[int, str]:
         """尝试从 ONNX 模型加载类别名称"""
@@ -343,12 +300,62 @@ class ONNXModel(BaseModel):
         input_tensor = self._preprocess(image)
 
         # 推理
-        outputs = self.session.run(self.output_names, {self.input_name: input_tensor})
+        # CoreML provider 对某些操作（如 GatherElements）支持不完整
+        # 在大模型上可能导致 CoreML + CPU 混合推理不稳定
+        # 策略：失败时使用 CPU provider 重试该图片
+        try:
+            outputs = self.session.run(
+                self.output_names, {self.input_name: input_tensor}
+            )
+        except Exception as e:
+            # 检查是否是 CoreML provider 的问题
+            providers = self.session.get_providers()
+            if "CoreMLExecutionProvider" in providers:
+                # CoreML + CPU 混合推理失败，使用纯 CPU 重试
+                logger.debug(f"CoreML 推理失败，使用 CPU 重试: {type(e).__name__}")
+                outputs = self._run_with_cpu_provider(input_tensor)
+            else:
+                raise
 
         # 后处理
         detections = self._postprocess(outputs, conf, image.shape[:2])
 
         return detections
+
+    def _run_with_cpu_provider(self, input_tensor: np.ndarray) -> List[np.ndarray]:
+        """
+        使用纯 CPU provider 执行推理（用于 CoreML 不稳定的情况）
+
+        使用缓存的 CPU session 避免重复创建
+
+        Args:
+            input_tensor: 预处理后的输入张量
+
+        Returns:
+            ONNX 模型输出
+        """
+        # 如果没有缓存的 CPU session，创建一个
+        if self._cpu_session is None:
+            try:
+                import onnxruntime as ort
+            except ImportError:
+                raise RuntimeError("需要安装 onnxruntime")
+
+            model_path = self.model_info.get("weights")
+            if not model_path or not Path(model_path).exists():
+                raise RuntimeError("无法获取模型路径")
+
+            self._cpu_session = ort.InferenceSession(
+                model_path, providers=["CPUExecutionProvider"]
+            )
+            logger.debug("已创建 CPU session 缓存")
+
+        # 使用缓存的 CPU session 执行推理
+        outputs = self._cpu_session.run(
+            self.output_names, {self.input_name: input_tensor}
+        )
+
+        return outputs
 
     def _preprocess(self, image: np.ndarray) -> np.ndarray:
         """
@@ -484,11 +491,10 @@ class ONNXModel(BaseModel):
         """
         后处理 ONNX 输出
 
-        支持多种 YOLO ONNX 输出格式：
-        1. YOLOv8/v9: [batch, 84, num_anchors] - 需要转置并计算类别分数
-           84 = 4 (bbox: x, y, w, h) + 80 (class scores)
-        2. YOLOv10: [batch, num_predictions, 6] - 已包含NMS和置信度
-           6 = [x1, y1, x2, y2, conf, class_id]
+        根据模型类型调用对应的后处理方法：
+        - YOLO 系列: _postprocess_yolov8 或 _postprocess_yolov10
+        - RT-DETR: _postprocess_rtdetr
+        - Faster R-CNN: _postprocess_faster_rcnn
 
         Args:
             outputs: ONNX 模型输出
@@ -498,38 +504,44 @@ class ONNXModel(BaseModel):
         Returns:
             检测框列表
         """
-        detections = []
-
         if len(outputs) == 0:
-            return detections
+            return []
 
-        predictions = outputs[0]
-
-        # 处理 batch 维度
-        if len(predictions.shape) == 3:
-            predictions = predictions[0]
-
-        # 检查预测数量和维度
-        if len(predictions.shape) < 2:
-            return detections
-
-        # 检测输出格式
-        # YOLOv8/v9 格式: [84, num_anchors] (如 [84, 8400])
-        # YOLOv10 格式: [num_predictions, 6] (如 [300, 6])
-        # 区别：YOLOv8/v9 的 num_anchors 很大，YOLOv10 的 num_predictions 较小
-
-        shape = predictions.shape
-        if shape[1] > 1000:  # 第二维很大，是 YOLOv8/v9 格式 [84, 8400]
-            # YOLOv8/v9 格式: [84, num_anchors] -> [num_anchors, 84]
-            predictions = predictions.T
-            return self._postprocess_yolov8(predictions, conf_threshold, original_shape)
-        elif shape[0] > 1000:  # 第一维很大，已经是 [num_anchors, 84]
-            return self._postprocess_yolov8(predictions, conf_threshold, original_shape)
-        else:
-            # YOLOv10 格式: [num_predictions, 6]
-            return self._postprocess_yolov10(
-                predictions, conf_threshold, original_shape
+        # 根据模型类型选择后处理方法
+        if self.model_type == "rtdetr":
+            return self._postprocess_rtdetr(outputs[0], conf_threshold, original_shape)
+        elif self.model_type == "faster_rcnn":
+            return self._postprocess_faster_rcnn(
+                outputs, conf_threshold, original_shape
             )
+        else:
+            # YOLO 系列模型
+            predictions = outputs[0]
+
+            # 处理 batch 维度
+            if len(predictions.shape) == 3:
+                predictions = predictions[0]
+
+            # 检查预测数量和维度
+            if len(predictions.shape) < 2:
+                return []
+
+            # 检测输出格式
+            shape = predictions.shape
+            if shape[1] > 1000:  # YOLOv8/v9 格式 [84, 8400]
+                predictions = predictions.T
+                return self._postprocess_yolov8(
+                    predictions, conf_threshold, original_shape
+                )
+            elif shape[0] > 1000:  # 已经是 [num_anchors, 84]
+                return self._postprocess_yolov8(
+                    predictions, conf_threshold, original_shape
+                )
+            else:
+                # YOLOv10 格式: [num_predictions, 6]
+                return self._postprocess_yolov10(
+                    predictions, conf_threshold, original_shape
+                )
 
     def _postprocess_yolov8(
         self, predictions: np.ndarray, conf_threshold: float, original_shape: tuple
@@ -607,7 +619,7 @@ class ONNXModel(BaseModel):
             # 确保有效的框
             if x2_scaled > x1_scaled and y2_scaled > y1_scaled:
                 # 将 YOLO 类别索引（0-79）映射到 COCO 类别 ID（1-90，不连续）
-                coco_class_id = self._yolo_index_to_coco_id(int(class_id))
+                coco_class_id = yolo_index_to_coco_id(int(class_id))
                 detections.append(
                     Detection(
                         bbox=[
@@ -695,7 +707,7 @@ class ONNXModel(BaseModel):
             # 确保有效的框
             if x2_scaled > x1_scaled and y2_scaled > y1_scaled:
                 # 将 YOLO 类别索引（0-79）映射到 COCO 类别 ID（1-90，不连续）
-                coco_class_id = self._yolo_index_to_coco_id(int(class_id))
+                coco_class_id = yolo_index_to_coco_id(int(class_id))
                 detections.append(
                     Detection(
                         bbox=[
@@ -712,6 +724,200 @@ class ONNXModel(BaseModel):
         # 应用 NMS
         detections = self._apply_nms(detections)
 
+        return detections
+
+    def _postprocess_rtdetr(
+        self, output: np.ndarray, conf_threshold: float, original_shape: tuple
+    ) -> List[Detection]:
+        """
+        处理 RT-DETR 格式的 ONNX 输出
+        格式: [batch, num_queries, 84]
+        其中 84 = 4 (bbox) + 80 (class scores)
+
+        Args:
+            output: RT-DETR 输出 [1, 300, 84]
+            conf_threshold: 置信度阈值
+            original_shape: 原始图像尺寸 (H, W)
+
+        Returns:
+            检测框列表
+        """
+        detections = []
+
+        # 处理 batch 维度
+        if len(output.shape) == 3:
+            output = output[0]  # [300, 84]
+
+        if len(output.shape) != 2:
+            return detections
+
+        num_queries = output.shape[0]
+        num_values = output.shape[1]
+
+        if num_values < 84:
+            return detections
+
+        # 获取模型输入尺寸
+        model_h, model_w = self._get_model_input_size()
+
+        for i in range(num_queries):
+            pred = output[i]
+
+            # RT-DETR: [cx, cy, w, h (归一化), class0_score, ..., class79_score]
+            # bbox 是归一化的 cxcywh 格式，范围 0-1
+            cx, cy, w, h = pred[0], pred[1], pred[2], pred[3]
+            class_scores = pred[4:84]
+
+            # 找到最高分类分数
+            class_id = int(np.argmax(class_scores))
+            confidence = float(class_scores[class_id])
+
+            # 置信度过滤
+            if confidence < conf_threshold:
+                continue
+
+            # 转换归一化的 cxcywh 为绝对坐标的 xyxy
+            # cx, cy, w, h 都在 0-1 范围内
+            x1 = (cx - w / 2) * model_w
+            y1 = (cy - h / 2) * model_h
+            x2 = (cx + w / 2) * model_w
+            y2 = (cy + h / 2) * model_h
+
+            # 限制在模型输出尺寸内
+            x1 = max(0, min(model_w, x1))
+            y1 = max(0, min(model_h, y1))
+            x2 = max(0, min(model_w, x2))
+            y2 = max(0, min(model_h, y2))
+
+            # 过滤太小的框
+            if x2 - x1 < 1 or y2 - y1 < 1:
+                continue
+
+            # 缩放到原图尺寸
+            orig_h, orig_w = original_shape[:2]
+            scale_x = orig_w / model_w
+            scale_y = orig_h / model_h
+
+            x1_scaled = x1 * scale_x
+            y1_scaled = y1 * scale_y
+            x2_scaled = x2 * scale_x
+            y2_scaled = y2 * scale_y
+
+            # 限制在原图尺寸内
+            x1_scaled = max(0, min(orig_w, x1_scaled))
+            y1_scaled = max(0, min(orig_h, y1_scaled))
+            x2_scaled = max(0, min(orig_w, x2_scaled))
+            y2_scaled = max(0, min(orig_h, y2_scaled))
+
+            # 确保有效的框
+            if x2_scaled > x1_scaled and y2_scaled > y1_scaled:
+                # 将 YOLO 类别索引（0-79）映射到 COCO 类别 ID（1-90，不连续）
+                coco_class_id = yolo_index_to_coco_id(class_id)
+                detections.append(
+                    Detection(
+                        bbox=[
+                            float(x1_scaled),
+                            float(y1_scaled),
+                            float(x2_scaled),
+                            float(y2_scaled),
+                        ],
+                        confidence=confidence,
+                        class_id=coco_class_id,
+                    )
+                )
+
+        # RT-DETR 已经包含 NMS，不需要额外应用
+        return detections
+
+    def _postprocess_faster_rcnn(
+        self, outputs: List[np.ndarray], conf_threshold: float, original_shape: tuple
+    ) -> List[Detection]:
+        """
+        处理 Faster R-CNN 格式的 ONNX 输出
+        格式: 多个输出 [boxes, labels, scores]
+
+        Args:
+            outputs: Faster R-CNN 输出列表
+            conf_threshold: 置信度阈值
+            original_shape: 原始图像尺寸 (H, W)
+
+        Returns:
+            检测框列表
+        """
+        detections = []
+
+        if len(outputs) < 3:
+            return detections
+
+        # Faster R-CNN 输出三个张量
+        # outputs[0]: boxes [N, 4]
+        # outputs[1]: labels [N]
+        # outputs[2]: scores [N]
+        boxes = outputs[0]
+        labels = outputs[1]
+        scores = outputs[2]
+
+        # 处理 batch 维度
+        if len(boxes.shape) == 3:
+            boxes = boxes[0]
+            labels = labels[0]
+            scores = scores[0]
+
+        # 获取模型输入尺寸
+        model_h, model_w = self._get_model_input_size()
+
+        # 遍历所有检测
+        for box, label, score in zip(boxes, labels, scores):
+            # 置信度过滤
+            if score < conf_threshold:
+                continue
+
+            # 解析 bbox (xyxy 格式)
+            x1, y1, x2, y2 = box[0], box[1], box[2], box[3]
+
+            # 限制在模型输出尺寸内
+            x1 = max(0, min(model_w, x1))
+            y1 = max(0, min(model_h, y1))
+            x2 = max(0, min(model_w, x2))
+            y2 = max(0, min(model_h, y2))
+
+            # 过滤太小的框
+            if x2 - x1 < 1 or y2 - y1 < 1:
+                continue
+
+            # 缩放到原图尺寸
+            orig_h, orig_w = original_shape[:2]
+            scale_x = orig_w / model_w
+            scale_y = orig_h / model_h
+
+            x1_scaled = x1 * scale_x
+            y1_scaled = y1 * scale_y
+            x2_scaled = x2 * scale_x
+            y2_scaled = y2 * scale_y
+
+            # 限制在原图尺寸内
+            x1_scaled = max(0, min(orig_w, x1_scaled))
+            y1_scaled = max(0, min(orig_h, y1_scaled))
+            x2_scaled = max(0, min(orig_w, x2_scaled))
+            y2_scaled = max(0, min(orig_h, y2_scaled))
+
+            # 确保有效的框
+            if x2_scaled > x1_scaled and y2_scaled > y1_scaled:
+                # Faster R-CNN 的 label 已经是 COCO ID，不需要映射
+                detections.append(
+                    Detection(
+                        bbox=[
+                            float(x1_scaled),
+                            float(y1_scaled),
+                            float(x2_scaled),
+                            float(y2_scaled),
+                        ],
+                        confidence=float(score),
+                        class_id=int(label),
+                    )
+                )
+
+        # Faster R-CNN 已经包含 NMS，不需要额外应用
         return detections
 
         # 处理 batch 维度

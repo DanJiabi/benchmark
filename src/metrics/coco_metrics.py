@@ -1,3 +1,8 @@
+"""COCO 指标计算模块.
+
+提供 COCO 数据集标准评估指标的计算功能，包括 mAP、AR 等。
+"""
+
 import json
 import time
 from typing import Dict, List, Any
@@ -9,13 +14,50 @@ from ..models.base import Detection
 
 
 class COCOMetrics:
+    """COCO 指标计算器.
+
+    计算 COCO 数据集的标准评估指标，包括:
+    - AP@0.50: IoU=0.50 时的平均精度
+    - AP@0.50:0.95: IoU 从 0.50 到 0.95 的平均精度
+    - AP_small/medium/large: 不同尺度目标的 AP
+    - AR@1/10/100: 不同检测数量限制下的平均召回率
+
+    Attributes:
+        coco_gt: COCO 标注对象
+        image_ids: 所有图片 ID 列表
+
+    Example:
+        >>> metrics = COCOMetrics('annotations/instances_val2017.json')
+        >>> predictions = [{'image_id': 1, 'category_id': 1, 'bbox': [x,y,w,h], 'score': 0.9}]
+        >>> results = metrics.compute_metrics(predictions)
+        >>> print(results['AP@0.50'])
+    """
+
     def __init__(self, annotations_file: str):
+        """初始化 COCO 指标计算器.
+
+        Args:
+            annotations_file: COCO 标注文件路径 (JSON 格式)
+        """
         self.coco_gt = COCO(annotations_file)
         self.image_ids = self.coco_gt.getImgIds()
 
     def compute_metrics(
         self, predictions: List[Dict[str, Any]], iou_threshold: float = 0.5
     ) -> Dict[str, float]:
+        """计算 COCO 评估指标.
+
+        Args:
+            predictions: 预测结果列表，每个元素包含:
+                - image_id: 图片 ID
+                - category_id: 类别 ID (COCO 格式)
+                - bbox: 边界框 [x, y, width, height]
+                - score: 置信度分数
+            iou_threshold: IoU 阈值（未使用，保留用于兼容性）
+
+        Returns:
+            包含所有 COCO 指标的字典
+        """
         if not predictions:
             return {
                 "AP@0.50": 0.0,

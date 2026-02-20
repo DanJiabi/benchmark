@@ -1131,19 +1131,24 @@ def main():
     # Export command
     export_parser = subparsers.add_parser(
         "export",
-        help="Export model to ONNX or TensorRT format",
-        description="Export YOLO models to ONNX or TensorRT format for optimized inference",
+        help="Export models to ONNX or TensorRT format",
+        description="Export models (YOLO, RT-DETR, Faster R-CNN) to ONNX or TensorRT format for optimized inference",
     )
     export_parser.add_argument(
         "--model",
         type=str,
         action="append",
-        help="Path to model weights file(s) (.pt), can be used multiple times",
+        help="Path to model weights file(s) (.pt), or 'faster_rcnn' for torchvision pretrained. Can be used multiple times",
     )
     export_parser.add_argument(
         "--all-models",
         action="store_true",
         help="Export all models from models_cache directory",
+    )
+    export_parser.add_argument(
+        "--include-faster-rcnn",
+        action="store_true",
+        help="Include Faster R-CNN (torchvision pretrained) when using --all-models",
     )
     export_parser.add_argument(
         "--format",
@@ -1264,6 +1269,8 @@ def main():
             print("  od-benchmark export --model model.pt")
             print("  od-benchmark export --model model1.pt --model model2.pt")
             print("  od-benchmark export --all-models")
+            print("  od-benchmark export --model faster_rcnn  # 导出 Faster R-CNN")
+            print("  od-benchmark export --all-models --include-faster-rcnn")
             return
 
         batch_export_models(
@@ -1278,6 +1285,7 @@ def main():
             int8=args.int8,
             batch_size=args.batch_size,
             device=args.device,
+            include_faster_rcnn=getattr(args, "include_faster_rcnn", False),
         )
 
     elif args.command == "compare":
