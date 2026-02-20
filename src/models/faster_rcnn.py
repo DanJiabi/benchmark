@@ -156,3 +156,48 @@ class FasterRCNN(BaseModel):
 
     def set_confidence_threshold(self, threshold: float) -> None:
         self.conf_threshold = threshold
+
+    def export_to_onnx(
+        self,
+        output_path: str = None,
+        input_size: tuple = (640, 640),
+        opset_version: int = 17,
+    ) -> str:
+        """
+        导出 Faster R-CNN 为 ONNX 格式
+
+        Args:
+            output_path: 输出文件路径，None 时使用默认路径
+            input_size: 输入图像尺寸 (H, W)
+            opset_version: ONNX opset 版本
+
+        Returns:
+            导出的 ONNX 文件路径
+        """
+        import torch
+        from pathlib import Path
+
+        if output_path is None:
+            output_dir = Path("models_export")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_path = str(output_dir / "faster_rcnn.onnx")
+
+        self.model.eval()
+
+        # 创建虚拟输入
+        dummy_input = torch.randn(1, 3, input_size[0], input_size[1]).to(self.device)
+
+        # 导出为 ONNX（使用旧版导出方式）
+        torch.onnx.export(
+            self.model,
+            dummy_input,
+            output_path,
+            input_names=["images"],
+            output_names=["boxes", "labels", "scores"],
+            opset_version=opset_version,
+            dynamo=False,  # 使用旧版导出（Faster R-CNN 不支持新版 dynamo 导出）
+            verbose=False,
+        )
+
+        print(f"✅ ONNX 导出成功: {output_path}")
+        return output_path
