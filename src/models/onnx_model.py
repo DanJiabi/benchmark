@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 
 from .base import BaseModel, Detection
+from ..utils.coco_utils import yolo_index_to_coco_id
 
 logger = logging.getLogger(__name__)
 
@@ -164,94 +165,6 @@ class ONNXModel(BaseModel):
             w = self.input_shape[3] if isinstance(self.input_shape[3], int) else 640
             return (h, w)
         return (640, 640)  # 默认尺寸
-
-    def _yolo_index_to_coco_id(self, yolo_index: int) -> int:
-        """将 YOLO 类别索引（0-79）映射到 COCO 类别 ID（1-90，不连续）"""
-        coco_id_mapping = [
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            13,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-            22,
-            23,
-            24,
-            25,
-            27,
-            28,
-            31,
-            32,
-            33,
-            34,
-            35,
-            36,
-            37,
-            38,
-            39,
-            40,
-            41,
-            42,
-            43,
-            44,
-            46,
-            47,
-            48,
-            49,
-            50,
-            51,
-            52,
-            53,
-            54,
-            55,
-            56,
-            57,
-            58,
-            59,
-            60,
-            61,
-            62,
-            63,
-            64,
-            65,
-            67,
-            70,
-            72,
-            73,
-            74,
-            75,
-            76,
-            77,
-            78,
-            79,
-            80,
-            81,
-            82,
-            84,
-            85,
-            86,
-            87,
-            88,
-            89,
-            90,
-        ]
-        if 0 <= yolo_index < len(coco_id_mapping):
-            return coco_id_mapping[yolo_index]
-        return yolo_index + 1  # 默认值
 
     def _load_class_names(self, model_path: Path) -> Dict[int, str]:
         """尝试从 ONNX 模型加载类别名称"""
@@ -706,7 +619,7 @@ class ONNXModel(BaseModel):
             # 确保有效的框
             if x2_scaled > x1_scaled and y2_scaled > y1_scaled:
                 # 将 YOLO 类别索引（0-79）映射到 COCO 类别 ID（1-90，不连续）
-                coco_class_id = self._yolo_index_to_coco_id(int(class_id))
+                coco_class_id = yolo_index_to_coco_id(int(class_id))
                 detections.append(
                     Detection(
                         bbox=[
@@ -794,7 +707,7 @@ class ONNXModel(BaseModel):
             # 确保有效的框
             if x2_scaled > x1_scaled and y2_scaled > y1_scaled:
                 # 将 YOLO 类别索引（0-79）映射到 COCO 类别 ID（1-90，不连续）
-                coco_class_id = self._yolo_index_to_coco_id(int(class_id))
+                coco_class_id = yolo_index_to_coco_id(int(class_id))
                 detections.append(
                     Detection(
                         bbox=[
@@ -899,7 +812,7 @@ class ONNXModel(BaseModel):
             # 确保有效的框
             if x2_scaled > x1_scaled and y2_scaled > y1_scaled:
                 # 将 YOLO 类别索引（0-79）映射到 COCO 类别 ID（1-90，不连续）
-                coco_class_id = self._yolo_index_to_coco_id(class_id)
+                coco_class_id = yolo_index_to_coco_id(class_id)
                 detections.append(
                     Detection(
                         bbox=[

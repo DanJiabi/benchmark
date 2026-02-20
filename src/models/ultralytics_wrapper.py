@@ -1,6 +1,7 @@
 import numpy as np
 from typing import List, Dict, Any
 from .base import BaseModel, Detection
+from ..utils.coco_utils import yolo_index_to_coco_id
 
 
 class UltralyticsWrapper(BaseModel):
@@ -24,94 +25,6 @@ class UltralyticsWrapper(BaseModel):
             "device": self.device,
         }
 
-    def _yolo_index_to_coco_id(self, yolo_index: int) -> int:
-        """将 YOLO 类别索引（0-79）映射到 COCO 类别 ID（1-90，不连续）"""
-        coco_id_mapping = [
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            13,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-            22,
-            23,
-            24,
-            25,
-            27,
-            28,
-            31,
-            32,
-            33,
-            34,
-            35,
-            36,
-            37,
-            38,
-            39,
-            40,
-            41,
-            42,
-            43,
-            44,
-            46,
-            47,
-            48,
-            49,
-            50,
-            51,
-            52,
-            53,
-            54,
-            55,
-            56,
-            57,
-            58,
-            59,
-            60,
-            61,
-            62,
-            63,
-            64,
-            65,
-            67,
-            70,
-            72,
-            73,
-            74,
-            75,
-            76,
-            77,
-            78,
-            79,
-            80,
-            81,
-            82,
-            84,
-            85,
-            86,
-            87,
-            88,
-            89,
-            90,
-        ]
-        if 0 <= yolo_index < len(coco_id_mapping):
-            return coco_id_mapping[yolo_index]
-        return yolo_index + 1  # 默认值（向后兼容）
-
     def predict(
         self, image: np.ndarray, conf_threshold: float = None
     ) -> List[Detection]:
@@ -126,7 +39,7 @@ class UltralyticsWrapper(BaseModel):
                 conf = float(box.conf.cpu().numpy()[0])
                 cls = int(box.cls.cpu().numpy()[0])
                 # 将 YOLO 类别索引（0-79）映射到 COCO 类别 ID（1-90，不连续）
-                coco_class_id = self._yolo_index_to_coco_id(cls)
+                coco_class_id = yolo_index_to_coco_id(cls)
                 detections.append(Detection(xyxy, conf, coco_class_id))
 
         return detections
