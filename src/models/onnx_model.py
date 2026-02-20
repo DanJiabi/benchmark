@@ -32,6 +32,7 @@ class ONNXModel(BaseModel):
         self._is_yolo = False
         self.iou_threshold = iou_threshold
         self.model_type = None  # 'yolo', 'rtdetr', 'faster_rcnn'
+        self._cpu_session = None  # 缓存 CPU session 用于回退
 
     def load_model(self, model_path: str) -> None:
         """
@@ -385,20 +386,21 @@ class ONNXModel(BaseModel):
         # 预处理
         input_tensor = self._preprocess(image)
 
-        # 推理（如果 CoreML 失败，自动回退到 CPU）
+        # 推理
+        # CoreML provider 对某些操作（如 GatherElements）支持不完整
+        # 在大模型上可能导致 CoreML + CPU 混合推理不稳定
+        # 策略：失败时使用 CPU provider 重试该图片
         try:
             outputs = self.session.run(
                 self.output_names, {self.input_name: input_tensor}
             )
         except Exception as e:
-            # CoreML provider 可能对某些操作（如 GatherElements）不兼容
-            # 尝试回退到 CPU provider
-            if "CoreMLExecutionProvider" in self.session.get_providers():
-                logger.warning(f"CoreML 推理失败，回退到 CPU: {type(e).__name__}")
-                self._fallback_to_cpu()
-                outputs = self.session.run(
-                    self.output_names, {self.input_name: input_tensor}
-                )
+            # 检查是否是 CoreML provider 的问题
+            providers = self.session.get_providers()
+            if "CoreMLExecutionProvider" in providers:
+                # CoreML + CPU 混合推理失败，使用纯 CPU 重试
+                logger.debug(f"CoreML 推理失败，使用 CPU 重试: {type(e).__name__}")
+                outputs = self._run_with_cpu_provider(input_tensor)
             else:
                 raise
 
@@ -407,20 +409,40 @@ class ONNXModel(BaseModel):
 
         return detections
 
-    def _fallback_to_cpu(self) -> None:
-        """回退到 CPU provider（用于 CoreML 兼容性问题）"""
-        try:
-            import onnxruntime as ort
-        except ImportError:
-            return
+    def _run_with_cpu_provider(self, input_tensor: np.ndarray) -> List[np.ndarray]:
+        """
+        使用纯 CPU provider 执行推理（用于 CoreML 不稳定的情况）
 
-        # 重新创建会话，只使用 CPU
-        model_path = self.model_info.get("weights")
-        if model_path and Path(model_path).exists():
-            self.session = ort.InferenceSession(
+        使用缓存的 CPU session 避免重复创建
+
+        Args:
+            input_tensor: 预处理后的输入张量
+
+        Returns:
+            ONNX 模型输出
+        """
+        # 如果没有缓存的 CPU session，创建一个
+        if self._cpu_session is None:
+            try:
+                import onnxruntime as ort
+            except ImportError:
+                raise RuntimeError("需要安装 onnxruntime")
+
+            model_path = self.model_info.get("weights")
+            if not model_path or not Path(model_path).exists():
+                raise RuntimeError("无法获取模型路径")
+
+            self._cpu_session = ort.InferenceSession(
                 model_path, providers=["CPUExecutionProvider"]
             )
-            logger.info("已回退到 CPU provider")
+            logger.debug("已创建 CPU session 缓存")
+
+        # 使用缓存的 CPU session 执行推理
+        outputs = self._cpu_session.run(
+            self.output_names, {self.input_name: input_tensor}
+        )
+
+        return outputs
 
     def _preprocess(self, image: np.ndarray) -> np.ndarray:
         """
