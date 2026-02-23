@@ -2,7 +2,7 @@
 """
 快速开始指南 - quick_start.py
 
-5 分钟上手 od-benchmark
+5 分钟上手 odb
 """
 
 import subprocess
@@ -26,7 +26,7 @@ def step_1_installation():
 
 3. 验证安装:
    
-   od-benchmark --help
+   odb --help
    
    或者运行测试脚本:
    python scripts/test_installation.py
@@ -59,7 +59,7 @@ def step_3_first_benchmark():
     print("""
 运行简单的基准测试（使用 10 张图片）:
 
-   od-benchmark benchmark --model yolov8n --num-images 10
+   odb benchmark --model yolov8n --num-images 10
 
 这将:
 - 加载 YOLOv8n 模型
@@ -79,9 +79,9 @@ def step_4_visualize_results():
 
    python examples/visualize_clean.py --model yolov8n --max-images 5
 
-或者使用 od-benchmark:
+或者使用 odb:
 
-   od-benchmark benchmark --model yolov8n --visualize --num-viz-images 10
+   odb benchmark --model yolov8n --visualize --num-viz-images 10
 
 可视化图片将保存到 outputs/visualizations/
 """)
@@ -95,11 +95,11 @@ def step_5_compare_models():
     print("""
 对比 YOLOv8n 和 YOLOv8s:
 
-   od-benchmark benchmark --model yolov8n --model yolov8s --num-images 50
+   odb benchmark --model yolov8n --model yolov8s --num-images 50
 
 或者测试所有模型:
 
-   od-benchmark benchmark --all --num-images 100
+   odb benchmark --all --num-images 100
 
 这将生成对比图表和表格。
 """)
@@ -113,7 +113,7 @@ def step_6_export_model():
     print("""
 导出 YOLOv8n 为 ONNX 格式:
 
-   od-benchmark export --model models_cache/yolov8n.pt --format onnx
+   odb export --model models_cache/yolov8n.pt --format onnx
 
 导出的模型将保存到 models_export/
 """)
@@ -127,7 +127,7 @@ def step_7_analyze_custom_model():
     print("""
 将自己的模型与基准对比:
 
-   od-benchmark analyze \\
+   odb analyze \\
        --baseline yolov8n \\
        --user-model path/to/your_model.pt \\
        --num-images 50
@@ -195,10 +195,10 @@ def tips():
    - 全部 (5000): 完整评估（最准确但最慢）
 
 5. 查看帮助:
-   od-benchmark --help
-   od-benchmark benchmark --help
-   od-benchmark analyze --help
-   od-benchmark export --help
+   odb --help
+   odb benchmark --help
+   odb analyze --help
+   odb export --help
 """)
 
 
@@ -239,7 +239,7 @@ def run_quick_start():
     print("\n" + "=" * 80)
     print("OD-Benchmark 快速开始指南")
     print("=" * 80)
-    print("\n欢迎使用 od-benchmark！本指南将在 5 分钟内帮助您上手。\n")
+    print("\n欢迎使用 odb！本指南将在 5 分钟内帮助您上手。\n")
 
     step_1_installation()
     step_2_download_weights()

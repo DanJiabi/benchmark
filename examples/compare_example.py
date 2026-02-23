@@ -2,7 +2,7 @@
 """
 格式性能对比示例 - compare_example.py
 
-展示如何使用 od-benchmark compare 对比不同格式的性能
+展示如何使用 odb compare 对比不同格式的性能
 """
 
 import subprocess
@@ -16,7 +16,7 @@ def example_1_basic_comparison():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "compare",
         "--model",
         "models_cache/yolov8n.pt",
@@ -42,7 +42,7 @@ def example_2_pytorch_only():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "compare",
         "--model",
         "models_cache/yolov8n.pt",
@@ -70,7 +70,7 @@ def example_3_different_num_images():
 
     print("\n快速测试 (10 张图片):")
     cmd1 = [
-        "od-benchmark",
+        "odb",
         "compare",
         "--model",
         "models_cache/yolov8n.pt",
@@ -83,7 +83,7 @@ def example_3_different_num_images():
 
     print("\n中等精度 (50 张图片):")
     cmd2 = [
-        "od-benchmark",
+        "odb",
         "compare",
         "--model",
         "models_cache/yolov8n.pt",
@@ -96,7 +96,7 @@ def example_3_different_num_images():
 
     print("\n完整测试 (500 张图片):")
     cmd3 = [
-        "od-benchmark",
+        "odb",
         "compare",
         "--model",
         "models_cache/yolov8n.pt",
@@ -116,7 +116,7 @@ def example_4_custom_model_name():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "compare",
         "--model",
         "models_cache/yolov8n.pt",
@@ -153,7 +153,7 @@ for model in "${MODELS[@]}"; do
     echo "对比模型: $model"
     echo "======================================"
     
-    od-benchmark compare \\
+    odb compare \\
         --model "models_cache/${model}.pt" \\
         --num-images $NUM_IMAGES \\
         --output-dir "outputs/examples/compare/batch/${model}"
@@ -178,7 +178,7 @@ def example_6_comparison_with_export():
 
     print("\n步骤 1: 导出 ONNX 模型")
     cmd_export = [
-        "od-benchmark",
+        "odb",
         "export",
         "--model",
         "models_cache/yolov8n.pt",
@@ -195,7 +195,7 @@ def example_6_comparison_with_export():
 
     print("\n步骤 2: 对比性能")
     cmd_compare = [
-        "od-benchmark",
+        "odb",
         "compare",
         "--model",
         "models_cache/yolov8n.pt",
@@ -208,7 +208,7 @@ def example_6_comparison_with_export():
 
     print("\n说明:")
     print("  - 先手动导出 ONNX 模型（可以使用自定义参数）")
-    print("  - 然后使用 od-benchmark compare 对比性能")
+    print("  - 然后使用 odb compare 对比性能")
     print("  - 导出的模型会被自动使用，不会重复导出")
     print()
 
@@ -265,7 +265,7 @@ def run_examples():
     print("\n" + "=" * 80)
     print("OD-Benchmark 格式性能对比示例")
     print("=" * 80)
-    print("\n以下示例展示了如何使用 od-benchmark compare 对比不同格式的性能。\n")
+    print("\n以下示例展示了如何使用 odb compare 对比不同格式的性能。\n")
 
     example_1_basic_comparison()
     example_2_pytorch_only()

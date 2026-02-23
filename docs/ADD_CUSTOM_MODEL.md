@@ -21,7 +21,7 @@ models:
 2. **直接运行**：
 
 ```bash
-od-benchmark benchmark --model your_custom_model
+odb benchmark --model your_custom_model
 ```
 
 ### 支持的 Ultralytics 模型
@@ -219,7 +219,7 @@ models:
 ### 步骤 4: 运行测试
 
 ```bash
-od-benchmark benchmark --model my_custom_model --num-images 10
+odb benchmark --model my_custom_model --num-images 10
 ```
 
 ---
@@ -376,7 +376,7 @@ A:
 python scripts/download_weights.py
 
 # 运行测试
-od-benchmark benchmark --model my_custom_model --num-images 10
+odb benchmark --model my_custom_model --num-images 10
 ```
 
 ### Q: 如何添加类别名称映射？

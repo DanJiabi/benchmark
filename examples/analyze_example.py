@@ -2,7 +2,7 @@
 """
 模型对比分析示例 - analyze_example.py
 
-展示如何使用 od-benchmark analyze 进行模型对比分析
+展示如何使用 odb analyze 进行模型对比分析
 """
 
 import subprocess
@@ -16,7 +16,7 @@ def example_1_basic_comparison():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "analyze",
         "--baseline",
         "yolov8n",
@@ -46,7 +46,7 @@ def example_2_all_baselines():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "analyze",
         "--all-baselines",
         "--user-model",
@@ -74,7 +74,7 @@ def example_3_custom_model_weights():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "analyze",
         "--baseline",
         "yolov8n",
@@ -104,7 +104,7 @@ def example_4_different_formats():
 
     print("\nJSON 格式 (适合程序处理):")
     cmd1 = [
-        "od-benchmark",
+        "odb",
         "analyze",
         "--baseline",
         "yolov8n",
@@ -119,7 +119,7 @@ def example_4_different_formats():
 
     print("\nHTML 格式 (适合人工查看):")
     cmd2 = [
-        "od-benchmark",
+        "odb",
         "analyze",
         "--baseline",
         "yolov8n",
@@ -134,7 +134,7 @@ def example_4_different_formats():
 
     print("\nCSV 格式 (适合数据分析):")
     cmd3 = [
-        "od-benchmark",
+        "odb",
         "analyze",
         "--baseline",
         "yolov8n",
@@ -149,7 +149,7 @@ def example_4_different_formats():
 
     print("\nAll 格式 (生成所有格式):")
     cmd4 = [
-        "od-benchmark",
+        "odb",
         "analyze",
         "--baseline",
         "yolov8n",
@@ -171,7 +171,7 @@ def example_5_debug_mode():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "analyze",
         "--baseline",
         "yolov8n",
@@ -197,7 +197,7 @@ def run_examples():
     print("\n" + "=" * 80)
     print("OD-Benchmark 模型对比分析示例")
     print("=" * 80)
-    print("\n以下示例展示了如何使用 od-benchmark analyze 进行模型对比。\n")
+    print("\n以下示例展示了如何使用 odb analyze 进行模型对比。\n")
 
     example_1_basic_comparison()
     example_2_all_baselines()

@@ -1,6 +1,6 @@
 # ONNX 性能比较使用指南
 
-本文档介绍如何使用 `od-benchmark compare` 命令比较 PyTorch 和 ONNX 格式的性能差异。
+本文档介绍如何使用 `odb compare` 命令比较 PyTorch 和 ONNX 格式的性能差异。
 
 ## 功能概述
 
@@ -16,7 +16,7 @@
 ### 基本命令
 
 ```bash
-od-benchmark compare --model models_cache/yolov8n.pt --num-images 50
+odb compare --model models_cache/yolov8n.pt --num-images 50
 ```
 
 ### 参数说明
@@ -35,7 +35,7 @@ od-benchmark compare --model models_cache/yolov8n.pt --num-images 50
 ### 示例 1: 对比 YOLOv8n
 
 ```bash
-od-benchmark compare \
+odb compare \
   --model models_cache/yolov8n.pt \
   --num-images 100
 ```
@@ -86,7 +86,7 @@ ONNX            156.30      6.40        0.5218
 ### 示例 2: 只对比 PyTorch
 
 ```bash
-od-benchmark compare \
+odb compare \
   --model models_cache/yolov8n.pt \
   --formats pytorch \
   --num-images 50
@@ -95,7 +95,7 @@ od-benchmark compare \
 ### 示例 3: 自定义模型名称
 
 ```bash
-od-benchmark compare \
+odb compare \
   --model models_cache/my_custom_model.pt \
   --model-name "My Custom YOLO" \
   --num-images 200
@@ -105,10 +105,10 @@ od-benchmark compare \
 
 ```bash
 # 快速测试 (10张图片)
-od-benchmark compare --model yolov8n.pt --num-images 10
+odb compare --model yolov8n.pt --num-images 10
 
 # 完整测试 (500张图片)
-od-benchmark compare --model yolov8n.pt --num-images 500
+odb compare --model yolov8n.pt --num-images 500
 ```
 
 ## Python API 使用
@@ -224,7 +224,7 @@ for model in "${MODELS[@]}"; do
     echo "对比模型: $model"
     echo "======================================"
     
-    od-benchmark compare \
+    odb compare \
         --model "models_cache/${model}.pt" \
         --num-images $NUM_IMAGES \
         --output-dir "outputs/format_comparison/${model}"
@@ -327,9 +327,9 @@ A: 在以下情况可能出现：
 
 ## 相关命令
 
-- `od-benchmark export` - 导出 ONNX 模型
-- `od-benchmark benchmark` - 基准测试
-- `od-benchmark analyze` - 模型对比分析
+- `odb export` - 导出 ONNX 模型
+- `odb benchmark` - 基准测试
+- `odb analyze` - 模型对比分析
 
 ## 反馈与支持
 

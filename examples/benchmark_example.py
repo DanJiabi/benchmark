@@ -2,7 +2,7 @@
 """
 基准测试示例 - benchmark_example.py
 
-展示如何使用 od-benchmark 进行模型性能基准测试
+展示如何使用 odb 进行模型性能基准测试
 """
 
 import subprocess
@@ -16,7 +16,7 @@ def example_1_single_model():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "benchmark",
         "--model",
         "yolov8n",
@@ -44,7 +44,7 @@ def example_2_multiple_models():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "benchmark",
         "--model",
         "yolov8n",
@@ -73,7 +73,7 @@ def example_3_all_models():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "benchmark",
         "--all",
         "--num-images",
@@ -99,7 +99,7 @@ def example_4_with_visualization():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "benchmark",
         "--model",
         "yolov8n",
@@ -129,7 +129,7 @@ def example_5_custom_config():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "benchmark",
         "--config",
         "config.yaml",
@@ -156,7 +156,7 @@ def example_6_different_conf_thresholds():
 
     print("\n低阈值 (0.001) - 用于完整评估:")
     cmd1 = [
-        "od-benchmark",
+        "odb",
         "benchmark",
         "--model",
         "yolov8n",
@@ -171,7 +171,7 @@ def example_6_different_conf_thresholds():
 
     print("\n中阈值 (0.25) - 用于可视化:")
     cmd2 = [
-        "od-benchmark",
+        "odb",
         "benchmark",
         "--model",
         "yolov8n",
@@ -186,7 +186,7 @@ def example_6_different_conf_thresholds():
 
     print("\n高阈值 (0.5) - 只检测高置信度目标:")
     cmd3 = [
-        "od-benchmark",
+        "odb",
         "benchmark",
         "--model",
         "yolov8n",
@@ -206,7 +206,7 @@ def run_examples():
     print("\n" + "=" * 80)
     print("OD-Benchmark 基准测试示例")
     print("=" * 80)
-    print("\n以下示例展示了如何使用 od-benchmark 进行模型性能测试。")
+    print("\n以下示例展示了如何使用 odb 进行模型性能测试。")
     print("这些命令可以直接在终端中运行。\n")
 
     example_1_single_model()
@@ -227,7 +227,7 @@ def run_examples():
    export PYTORCH_ENABLE_MPS_FALLBACK=1
 
 3. 查看所有可用选项:
-   od-benchmark benchmark --help
+   odb benchmark --help
 
 4. 测试结果保存在 outputs/examples/ 目录下，包括:
    - 结果表格 (CSV/JSON)

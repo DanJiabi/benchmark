@@ -77,7 +77,7 @@ pip install -e .
 python scripts/test_installation.py
 
 # 运行基准测试
-od-benchmark benchmark --model yolov8n --num-images 10
+odb benchmark --model yolov8n --num-images 10
 ```
 
 ### 方式 2: 传统方式（无需 pip install）
@@ -158,7 +158,7 @@ python benchmark.py --model yolov8n
 
 ```bash
 # 方式 1: 使用 CLI 工具（推荐）
-od-benchmark benchmark --model yolov8n --num-images 10
+odb benchmark --model yolov8n --num-images 10
 
 # 方式 2: 使用包装脚本（自动设置环境）
 ./run_benchmark.sh --model yolov8n --num-images 10
@@ -188,7 +188,7 @@ open outputs/visualizations/
 
 ```bash
 # 直接使用 CLI 工具
-od-benchmark benchmark [options]
+odb benchmark [options]
 ```
 
 优点：
@@ -419,16 +419,16 @@ python benchmark.py --all
 
 ```bash
 # 快速测试（少量图片）
-od-benchmark benchmark --model yolov8n --num-images 10
+odb benchmark --model yolov8n --num-images 10
 
 # 完整测试（所有模型）
-od-benchmark benchmark --all --conf-threshold 0.001
+odb benchmark --all --conf-threshold 0.001
 
 # 测试指定模型
-od-benchmark benchmark --model yolov8n --model yolov8s
+odb benchmark --model yolov8n --model yolov8s
 
 # 生成可视化
-od-benchmark benchmark --model yolov8n --visualize --num-viz-images 20
+odb benchmark --model yolov8n --visualize --num-viz-images 20
 ```
 
 ### 更多示例
@@ -589,7 +589,7 @@ models:
 
 ```bash
 # 运行
-od-benchmark benchmark --model my_custom_yolo
+odb benchmark --model my_custom_yolo
 ```
 
 **完整方式** (创建自定义模型类):
@@ -610,11 +610,28 @@ od-benchmark benchmark --model my_custom_yolo
  python benchmark.py --all
 ``` 
 
-### 2. 模型对比分析
+### 3. RT-DETR 导出 ONNX 失败
+
+**问题**: 使用 `odb compare` 对比 RT-DETR 模型时出现 ONNX 导出错误，提示 `aten::index` 算子不支持
+
+**原因**: RT-DETR 使用了 Transformer 架构中的高级索引操作，需要 ONNX opset 16+，而默认使用 opset 12
+
+**解决**: 已修复！系统自动检测 RT-DETR 模型并使用 opset 16
+
+如果仍有问题，手动导出：
+```bash
+# 使用 opset 16 导出 RT-DETR
+odb export --model models_cache/rtdetr-l.pt --format onnx --opset 16
+
+# 然后使用已导出的 ONNX 模型
+odb compare --model models_export/rtdetr-l.onnx --format onnx
+```
+
+### 4. 模型对比分析
 
 **问题**: 如何将我的自定义模型与基准模型进行对比分析？
 
-**解决**: 使用 `od-benchmark analyze` 命令
+**解决**: 使用 `odb analyze` 命令
 
 快速开始：
 
@@ -623,7 +640,7 @@ od-benchmark benchmark --model my_custom_yolo
 python scripts/test_analysis.py
 
 # 对比两个标准模型
-od-benchmark analyze \
+odb analyze \
   --baseline yolov8n \
   --user-model yolov8s \
   --num-images 100 \
@@ -632,7 +649,7 @@ od-benchmark analyze \
 
 详细使用指南: [模型对比分析指南](docs/ANALYSIS_USAGE.md)
 
-### 3. mAP 指标偏低
+### 5. mAP 指标偏低
 
 **问题**: mAP 只有 7-10%，远低于官方的 40-50%
 
@@ -647,7 +664,7 @@ python benchmark.py --all --conf-threshold 0.001
 - 检查日志中显示的 `AR@0.50:0.95` 应该在 35-40%
 - 检查 `mAP@0.50:0.95` 应该在 40-50%
 
-### 3. 模型权重下载失败
+### 6. 模型权重下载失败
 
 **问题**: 模型下载超时或失败
 
@@ -657,7 +674,7 @@ cd models_cache
 curl -L -o yolov8m.pt https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8m.pt
 ```
 
-### 4. 内存不足
+### 7. 内存不足
 
 **问题**: 推理时内存溢出
 

@@ -2,7 +2,7 @@
 """
 模型导出示例 - export_example.py
 
-展示如何使用 od-benchmark export 导出模型到不同格式
+展示如何使用 odb export 导出模型到不同格式
 """
 
 import subprocess
@@ -16,7 +16,7 @@ def example_1_export_to_onnx():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "export",
         "--model",
         "models_cache/yolov8n.pt",
@@ -46,7 +46,7 @@ def example_2_export_dynamic_onnx():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "export",
         "--model",
         "models_cache/yolov8n.pt",
@@ -75,7 +75,7 @@ def example_3_export_all_models():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "export",
         "--all-models",
         "--format",
@@ -103,7 +103,7 @@ def example_4_different_input_sizes():
 
     print("\n移动端优化 (320x320):")
     cmd1 = [
-        "od-benchmark",
+        "odb",
         "export",
         "--model",
         "models_cache/yolov8n.pt",
@@ -119,7 +119,7 @@ def example_4_different_input_sizes():
 
     print("\n标准尺寸 (640x640):")
     cmd2 = [
-        "od-benchmark",
+        "odb",
         "export",
         "--model",
         "models_cache/yolov8n.pt",
@@ -135,7 +135,7 @@ def example_4_different_input_sizes():
 
     print("\n高精度 (1280x1280):")
     cmd3 = [
-        "od-benchmark",
+        "odb",
         "export",
         "--model",
         "models_cache/yolov8n.pt",
@@ -164,7 +164,7 @@ MODELS=("yolov8n" "yolov8s" "yolov8m")
 
 for model in "${MODELS[@]}"; do
     echo "导出 $model..."
-    od-benchmark export \\
+    odb export \\
         --model "models_cache/${model}.pt" \\
         --format onnx \\
         --input-size 640 640 \\
@@ -186,7 +186,7 @@ def example_6_compare_formats():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "compare",
         "--model",
         "models_cache/yolov8n.pt",
@@ -211,7 +211,7 @@ def run_examples():
     print("\n" + "=" * 80)
     print("OD-Benchmark 模型导出示例")
     print("=" * 80)
-    print("\n以下示例展示了如何使用 od-benchmark export 导出模型。\n")
+    print("\n以下示例展示了如何使用 odb export 导出模型。\n")
 
     example_1_export_to_onnx()
     example_2_export_dynamic_onnx()

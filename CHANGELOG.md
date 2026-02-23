@@ -22,7 +22,7 @@ All notable changes to this project will be documented in this file.
 
 ### Migration Notes
 Three ways to run benchmark are now available:
-1. `od-benchmark benchmark [options]` (recommended)
+1. `odb benchmark [options]` (recommended)
 2. `./run_benchmark.sh [options]` (automatic setup)
 3. `python benchmark.py [options]` (backward compatible)
 

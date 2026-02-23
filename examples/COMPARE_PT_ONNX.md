@@ -235,7 +235,7 @@ pip install onnxruntime-gpu
 ls models_export/*.onnx
 
 # 如果没有，先导出
-od-benchmark export --all-models --format onnx
+odb export --all-models --format onnx
 ```
 
 ### Q: 图片读取失败

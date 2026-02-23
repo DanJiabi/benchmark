@@ -127,10 +127,19 @@ class FormatComparison:
 
             from src.models.exporters import ONNXExporter
 
+            # 检测模型类型，RT-DETR 需要 opset 16+
+            model_name = self.model_path.stem.lower()
+            is_rtdetr = "rtdetr" in model_name
+            opset_version = 16 if is_rtdetr else 12
+
+            if is_rtdetr and self.logger:
+                self.logger.info(f"检测到 RT-DETR 模型，使用 opset {opset_version}")
+
             exporter = ONNXExporter(
                 str(self.model_path),
                 str(self.output_dir),
                 input_size=(640, 640),
+                opset_version=opset_version,
             )
             result = exporter.export()
 

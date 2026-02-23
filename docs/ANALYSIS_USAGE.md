@@ -2,7 +2,7 @@
 
 ## 功能概述
 
-`od-benchmark analyze` 命令允许您将 config.yaml 中配置的模型作为基准，与您自己的自定义模型进行对比分析，并生成详细的对比报告。
+`odb analyze` 命令允许您将 config.yaml 中配置的模型作为基准，与您自己的自定义模型进行对比分析，并生成详细的对比报告。
 
 ## 快速开始
 
@@ -33,7 +33,7 @@ python scripts/test_analysis.py
 ### 基本语法
 
 ```bash
-od-benchmark analyze \
+odb analyze \
   --baseline <model_name> \
   --user-model <user_model> \
   --num-images <count>
@@ -57,7 +57,7 @@ od-benchmark analyze \
 ### 示例 1: 对比 YOLOv8n 和 YOLOv8s
 
 ```bash
-od-benchmark analyze \
+odb analyze \
   --baseline yolov8n \
   --user-model yolov8s \
   --num-images 100 \
@@ -67,7 +67,7 @@ od-benchmark analyze \
 ### 示例 2: 使用自定义权重文件
 
 ```bash
-od-benchmark analyze \
+odb analyze \
   --baseline yolov8n \
   --user-model /path/to/my_model.pt \
   --num-images 50 \
@@ -99,7 +99,7 @@ parameters:
 然后运行分析：
 
 ```bash
-od-benchmark analyze \
+odb analyze \
   --baseline yolov8n \
   --user-model user_models/my_custom.yaml \
   --num-images 200 \
@@ -109,7 +109,7 @@ od-benchmark analyze \
 ### 示例 4: 使用模拟模式（开发调试）
 
 ```bash
-od-benchmark analyze \
+odb analyze \
   --baseline yolov8n \
   --user-model yolov8n:simulated \
   --num-images 10 \
@@ -199,22 +199,22 @@ od-benchmark analyze \
 
 1. **模型名称**: config.yaml 中已配置的模型
    ```bash
-   od-benchmark analyze --baseline yolov8n --user-model yolov8s
+   odb analyze --baseline yolov8n --user-model yolov8s
    ```
 
 2. **权重文件**: 直接指定权重文件路径
    ```bash
-   od-benchmark analyze --baseline yolov8n --user-model models_cache/custom.pt
+   odb analyze --baseline yolov8n --user-model models_cache/custom.pt
    ```
 
 3. **配置文件**: 使用 YAML 配置文件描述模型
    ```bash
-   od-benchmark analyze --baseline yolov8n --user-model user_models/my_model.yaml
+   odb analyze --baseline yolov8n --user-model user_models/my_model.yaml
    ```
 
 4. **模拟模式**: 使用内置模拟模型（用于开发调试）
    ```bash
-   od-benchmark analyze --baseline yolov8n --user-model yolov8n:simulated --debug
+   odb analyze --baseline yolov8n --user-model yolov8n:simulated --debug
    ```
 
 ### 模拟模式说明
@@ -268,9 +268,9 @@ od-benchmark analyze \
 
 A: 依次运行多次分析，每次指定不同的用户模型：
 ```bash
-od-benchmark analyze --baseline yolov8n --user-model model1 --num-images 50
-od-benchmark analyze --baseline yolov8n --user-model model2 --num-images 50
-od-benchmark analyze --baseline yolov8n --user-model model3 --num-images 50
+odb analyze --baseline yolov8n --user-model model1 --num-images 50
+odb analyze --baseline yolov8n --user-model model2 --num-images 50
+odb analyze --baseline yolov8n --user-model model3 --num-images 50
 ```
 
 ### Q: 如何只评估性能，不使用 COCO 标注？
@@ -305,7 +305,7 @@ benchmark/
 
 1. 阅读 [添加自定义模型指南](docs/ADD_CUSTOM_MODEL.md) 了解如何创建自定义模型
 2. 运行 `python scripts/test_analysis.py` 进行快速测试
-3. 使用 `od-benchmark analyze --help` 查看所有选项
+3. 使用 `odb analyze --help` 查看所有选项
 4. 开始对比您的模型！
 
 ## 反馈与支持

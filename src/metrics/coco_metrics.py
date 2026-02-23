@@ -145,7 +145,14 @@ class PerformanceMetrics:
 
     def compute_performance_stats(self) -> Dict[str, float]:
         if not self.inference_times:
-            return {}
+            return {
+                "avg_inference_time_ms": 0.0,
+                "min_inference_time_ms": 0.0,
+                "max_inference_time_ms": 0.0,
+                "std_inference_time_ms": 0.0,
+                "fps": 0.0,
+                "total_images": self.total_images,
+            }
 
         times = np.array(self.inference_times)
         avg_time = np.mean(times)

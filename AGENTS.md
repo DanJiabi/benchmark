@@ -386,10 +386,10 @@ for batch_images in DataLoader(dataset, batch_size=32):
 ### 模型导出优化
 ```bash
 # ONNX 导出（推荐用于部署）
-od-benchmark export --model model.pt --format onnx --simplify
+odb export --model model.pt --format onnx --simplify
 
 # TensorRT 导出（NVIDIA GPU 最优）
-od-benchmark export --model model.pt --format tensorrt --fp16
+odb export --model model.pt --format tensorrt --fp16
 ```
 
 ## 常见运行问题
@@ -482,7 +482,7 @@ python benchmark.py --config config.yaml --model yolov8n --num-images 10
 python benchmark.py --config config.yaml --model yolov8n --visualize --num-viz-images 5
 
 # 分析模式
-od-benchmark analyze --baseline yolov8n --user-model path/to/model.pt --num-images 50
+odb analyze --baseline yolov8n --user-model path/to/model.pt --num-images 50
 ```
 
 ## 安全注意事项

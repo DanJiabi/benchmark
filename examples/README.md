@@ -2,6 +2,17 @@
 
 本目录包含 OD-Benchmark 的所有使用示例，帮助您快速掌握各项功能。
 
+## 📋 快速索引
+
+| 您的场景 | 推荐开始 | 预计时间 | 命令 |
+|---------|---------|---------|------|
+| 🆕 **首次使用** | [快速开始指南](#快速开始) | 5分钟 | `python examples/quick_start.py` |
+| 📊 **测试模型性能** | [基准测试示例](#1-基准测试-benchmark) | 10分钟 | `python examples/benchmark_example.py` |
+| 🔍 **对比不同模型** | [模型对比分析](#2-模型对比分析-analyze) | 10分钟 | `python examples/analyze_example.py` |
+| 📤 **导出ONNX部署** | [模型导出示例](#3-模型导出-export) | 10分钟 | `python examples/export_example.py` |
+| ⚖️ **PyTorch vs ONNX** | [格式对比工具](#4-格式性能对比-compare) | 15分钟 | `python examples/COMPARE_PT_ONNX.md` |
+| 🚀 **ONNX性能测试** | [ONNX基准测试](#5-onnx-基准测试) | 10分钟 | `python examples/onnx_benchmark_example.py` |
+
 ## 快速开始
 
 ### 5 分钟上手
@@ -133,141 +144,236 @@ python examples/visualize_clean.py --model yolov8n --max-images 5
 
 ```bash
 # 单个模型（PyTorch）
-od-benchmark benchmark --model yolov8n --num-images 10
+odb benchmark --model yolov8n --num-images 10
 
 # 多个模型
-od-benchmark benchmark --model yolov8n --model yolov8s --num-images 50
+odb benchmark --model yolov8n --model yolov8s --num-images 50
 
 # 所有模型（PyTorch）
-od-benchmark benchmark --all --num-images 100
+odb benchmark --all --num-images 100
 
 # 带可视化
-od-benchmark benchmark --model yolov8n --visualize --num-viz-images 10
+odb benchmark --model yolov8n --visualize --num-viz-images 10
 
 # 所有 ONNX 模型
-od-benchmark benchmark --all --format onnx --num-images 100
+odb benchmark --all --format onnx --num-images 100
 
 # 指定 ONNX 模型
-od-benchmark benchmark --model yolov8n.onnx --format onnx --num-images 50
+odb benchmark --model yolov8n.onnx --format onnx --num-images 50
 ```
 
 ### 模型分析
 
 ```bash
 # 基础对比
-od-benchmark analyze --baseline yolov8n --user-model yolov8s --num-images 50
+odb analyze --baseline yolov8n --user-model yolov8s --num-images 50
 
 # 所有基准
-od-benchmark analyze --all-baselines --user-model yolov10n --num-images 100
+odb analyze --all-baselines --user-model yolov10n --num-images 100
 
 # 自定义模型
-od-benchmark analyze --baseline yolov8n --user-model path/to/model.pt --num-images 50
+odb analyze --baseline yolov8n --user-model path/to/model.pt --num-images 50
 ```
 
 ### 模型导出
 
 ```bash
 # 导出 ONNX
-od-benchmark export --model models_cache/yolov8n.pt --format onnx
+odb export --model models_cache/yolov8n.pt --format onnx
 
 # 动态尺寸
-od-benchmark export --model models_cache/yolov8n.pt --format onnx --dynamic
+odb export --model models_cache/yolov8n.pt --format onnx --dynamic
 
 # 批量导出
-od-benchmark export --all-models --format onnx
+odb export --all-models --format onnx
 ```
 
 ### 格式对比
 
 ```bash
 # PyTorch vs ONNX
-od-benchmark compare --model models_cache/yolov8n.pt --num-images 50
+odb compare --model models_cache/yolov8n.pt --num-images 50
 
 # 只测试 PyTorch
-od-benchmark compare --model models_cache/yolov8n.pt --formats pytorch --num-images 50
+odb compare --model models_cache/yolov8n.pt --formats pytorch --num-images 50
 ```
 
-## 示例文件说明
+## 📁 文件分类
 
-| 文件 | 描述 | 使用场景 |
-|------|------|----------|
-| `quick_start.py` | 快速开始指南 | 新用户首次使用 |
-| `benchmark_example.py` | 基准测试示例 | 学习如何运行性能测试 |
-| `analyze_example.py` | 模型对比示例 | 学习如何对比不同模型 |
-| `export_example.py` | 模型导出示例 | 学习如何导出模型部署 |
-| `compare_example.py` | 格式对比示例 | 学习如何对比不同格式性能 |
-| `onnx_benchmark_example.py` | ONNX 基准测试示例 | 学习如何使用 --format onnx |
-| `compare_pt_onnx.py` | 格式对比工具 | 对比 PyTorch 和 ONNX 性能 |
-| `visualize_clean.py` | 可视化工具 | 查看检测结果 |
-| `COMPARE_PT_ONNX.md` | ONNX 对比文档 | 详细的使用说明和故障排除 |
+### 🎓 入门教程
+| 文件 | 类型 | 描述 | 使用场景 |
+|------|------|------|----------|
+| `quick_start.py` | 📖 教程 | 7步完整入门指南 | **新用户首选** - 了解所有功能 |
+| `check_examples_ready.py` | 🔧 工具 | 环境检查脚本 | 验证是否可运行示例 |
+| `README.md` | 📖 文档 | 本文件，完整目录说明 | 查找所需示例 |
+
+**开始之前**: 运行环境检查
+```bash
+python examples/check_examples_ready.py
+```
+
+### 📊 核心功能示例
+| 文件 | 类型 | 描述 | 使用场景 |
+|------|------|------|----------|
+| `benchmark_example.py` | 💻 代码 | 6个基准测试示例 | 学习性能测试各种用法 |
+| `analyze_example.py` | 💻 代码 | 5个模型对比示例 | 学习如何对比基准模型与自定义模型 |
+| `export_example.py` | 💻 代码 | 6个导出示例 | 学习导出ONNX/TensorRT用于部署 |
+| `compare_example.py` | 💻 代码 | 7个格式对比示例 | 学习对比PyTorch和ONNX性能 |
+| `onnx_benchmark_example.py` | 💻 代码 | 7个ONNX测试示例 | 学习测试ONNX模型性能 |
+
+### 🛠️ 实用工具
+| 文件 | 类型 | 描述 | 使用场景 |
+|------|------|------|----------|
+| `compare_pt_onnx.py` | 🔧 工具 | PyTorch vs ONNX对比脚本 | **验证ONNX导出正确性** |
+| `visualize_clean.py` | 🔧 工具 | 检测结果可视化脚本 | 查看检测框效果 |
+| `COMPARE_PT_ONNX.md` | 📖 文档 | ONNX对比详细说明 | 理解格式差异和故障排除 |
+| `utils.py` | 🛠️ 库 | 共享工具函数 | 示例代码内部使用 |
+
+## 🎯 按场景选择
+
+### 场景 1: 新用户首次使用
+**推荐路径**:
+1. 阅读本文档了解整体结构
+2. 运行 `python examples/quick_start.py` 了解基本流程
+3. 执行第一个测试: `odb benchmark --model yolov8n --num-images 10`
+4. 根据需求深入学习特定功能
+
+### 场景 2: 需要测试模型性能
+**学习路径**:
+1. 查看 `python examples/benchmark_example.py` 了解所有测试选项
+2. 快速测试: `odb benchmark --model yolov8n --num-images 10`
+3. 完整评估: `odb benchmark --model yolov8n --num-images 100 --conf-threshold 0.001`
+4. 批量测试: `odb benchmark --all --num-images 100`
+
+### 场景 3: 准备部署到生产环境
+**学习路径**:
+1. 查看 `python examples/export_example.py` 了解导出选项
+2. 导出ONNX: `odb export --model yolov8n.pt --format onnx`
+3. 阅读 `examples/COMPARE_PT_ONNX.md` 了解ONNX性能影响
+4. 对比验证: `python examples/compare_pt_onnx.py --pt-model yolov8n --onnx-model models_export/yolov8n.onnx`
+5. 测试ONNX性能: `odb benchmark --model yolov8n.onnx --format onnx`
+
+### 场景 4: 对比自定义模型与基准
+**学习路径**:
+1. 查看 `python examples/analyze_example.py` 了解对比方法
+2. 单模型对比: `odb analyze --baseline yolov8n --user-model your_model.pt`
+3. 多基准对比: `odb analyze --all-baselines --user-model your_model.pt`
+4. 生成HTML报告: `odb analyze ... --format html`
 
 ## 常见任务
 
 ### 任务 1: 快速测试一个模型
 
 ```bash
-od-benchmark benchmark --model yolov8n --num-images 10
+odb benchmark --model yolov8n --num-images 10
 ```
 
 ### 任务 2: 对比多个模型的性能
 
 ```bash
-od-benchmark benchmark --model yolov8n --model yolov8s --model yolov10n --num-images 50
+odb benchmark --model yolov8n --model yolov8s --model yolov10n --num-images 50
 ```
 
 ### 任务 3: 生成详细的可视化结果
 
 ```bash
-od-benchmark benchmark --model yolov8n --visualize --num-viz-images 10 --num-images 20
+odb benchmark --model yolov8n --visualize --num-viz-images 10 --num-images 20
 ```
 
 ### 任务 4: 导出模型用于部署
 
 ```bash
-od-benchmark export --model models_cache/yolov8n.pt --format onnx --simplify
+odb export --model models_cache/yolov8n.pt --format onnx --simplify
 ```
 
 ### 任务 5: 对比自定义模型与基准
 
 ```bash
-od-benchmark analyze --baseline yolov8n --user-model path/to/your_model.pt --num-images 50
+odb analyze --baseline yolov8n --user-model path/to/your_model.pt --num-images 50
 ```
 
 ### 任务 6: 对比 PyTorch 和 ONNX 性能
 
 ```bash
-od-benchmark compare --model models_cache/yolov8n.pt --num-images 100
+odb compare --model models_cache/yolov8n.pt --num-images 100
 ```
 
 ### 任务 7: 批量测试所有模型
 
 ```bash
 # PyTorch 模型
-od-benchmark benchmark --all --num-images 100
+odb benchmark --all --num-images 100
 
 # ONNX 模型
-od-benchmark benchmark --all --format onnx --num-images 100
+odb benchmark --all --format onnx --num-images 100
 ```
 
 ### 任务 8: 生成 HTML 报告
 
 ```bash
-od-benchmark analyze --baseline yolov8n --user-model yolov8s --format html --num-images 50
+odb analyze --baseline yolov8n --user-model yolov8s --format html --num-images 50
 ```
 
-## 输出目录结构
+## 📂 文件结构
+
+### examples/ 目录结构
+
+```
+examples/
+├── 📖 README.md                    # 📘 本文档 - 完整示例指南
+├── 📖 COMPARE_PT_ONNX.md          # 📘 ONNX对比详细文档
+│
+├── 🎓 入门教程
+│   ├── quick_start.py              # ⚡ 5分钟快速入门
+│   └── check_examples_ready.py     # ✔️ 环境检查工具
+│
+├── 📊 核心功能示例
+│   ├── benchmark_example.py        # 📈 基准测试示例 (6个示例)
+│   ├── analyze_example.py          # 🔍 模型对比分析 (5个示例)
+│   ├── export_example.py           # 📤 模型导出示例 (6个示例)
+│   ├── compare_example.py          # ⚖️ 格式对比示例 (7个示例)
+│   └── onnx_benchmark_example.py   # 🚀 ONNX测试示例 (7个示例)
+│
+├── 🛠️ 实用工具
+│   ├── compare_pt_onnx.py          # 🔬 PyTorch vs ONNX对比工具
+│   ├── visualize_clean.py          # 🎨 检测结果可视化
+│   └── utils.py                    # 🛠️ 共享工具函数
+│
+└── 📁 __pycache__/                 # Python缓存 (自动生成)
+```
+
+### 输出目录结构
+
+运行示例后，输出文件将保存在以下目录：
 
 ```
 outputs/
-├── examples/              # 示例输出
-│   ├── single_model/      # 单个模型测试
-│   ├── multi_model/       # 多个模型对比
-│   ├── with_viz/          # 带可视化的测试
-│   └── analysis/          # 分析报告
-├── results/               # 主要测试结果
-├── visualizations/        # 检测框可视化
-├── format_comparison/     # 格式对比报告
-└── export/               # 导出的模型
+├── examples/                  # 示例脚本输出
+│   ├── single_model/          # benchmark_example.py 示例1
+│   ├── multi_model/           # benchmark_example.py 示例2
+│   ├── all_models/            # benchmark_example.py 示例3
+│   ├── with_viz/              # benchmark_example.py 示例4
+│   ├── compare/               # compare_example.py 输出
+│   ├── analysis/              # analyze_example.py 输出
+│   └── export/                # export_example.py 输出
+│
+├── results/                   # 主要基准测试结果
+│   ├── comparison.json        # 批量测试结果
+│   └── results_table.csv      # 对比表格
+│
+├── visualizations/            # 检测框可视化图片
+│   └── *.jpg                  # 带检测框的示例图片
+│
+├── format_comparison/         # odb compare 输出
+│   └── *.onnx                 # 临时导出的ONNX模型
+│
+├── pytorch_results/           # PyTorch格式批量测试
+├── onnx_results/              # ONNX格式批量测试
+│
+└── figures/                   # 性能对比图表
+    ├── metrics_comparison.png # 指标对比图
+    ├── fps_vs_map.png         # FPS vs mAP图
+    └── size_vs_performance.png # 模型大小vs性能图
 ```
 
 ## 进阶用法
@@ -284,7 +390,7 @@ NUM_IMAGES=50
 
 for model in "${MODELS[@]}"; do
     echo "测试模型: $model"
-    od-benchmark benchmark --model "$model" --num-images "$NUM_IMAGES"
+    odb benchmark --model "$model" --num-images "$NUM_IMAGES"
 done
 
 echo "所有测试完成！"
@@ -333,7 +439,7 @@ dataset:
 
 ```bash
 export PYTORCH_ENABLE_MPS_FALLBACK=1
-od-benchmark benchmark --model yolov8n --num-images 10
+odb benchmark --model yolov8n --num-images 10
 ```
 
 ### Q: 如何添加自定义模型？

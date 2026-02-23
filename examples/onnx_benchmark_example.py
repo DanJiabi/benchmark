@@ -16,7 +16,7 @@ def example_1_export_all_models():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "export",
         "--all-models",
         "--format",
@@ -40,7 +40,7 @@ def example_2_benchmark_all_onnx():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "benchmark",
         "--all",
         "--format",
@@ -67,7 +67,7 @@ def example_3_benchmark_specific_onnx():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "benchmark",
         "--model",
         "yolov8n.onnx",
@@ -96,7 +96,7 @@ def example_4_benchmark_with_visualization():
     print("=" * 80)
 
     cmd = [
-        "od-benchmark",
+        "odb",
         "benchmark",
         "--model",
         "yolov8n.onnx",
@@ -130,7 +130,7 @@ def example_5_compare_pytorch_vs_onnx():
 
     print("\n步骤 1: 测试 PyTorch 模型")
     cmd_pytorch = [
-        "od-benchmark",
+        "odb",
         "benchmark",
         "--all",
         "--format",
@@ -144,7 +144,7 @@ def example_5_compare_pytorch_vs_onnx():
 
     print("\n步骤 2: 测试 ONNX 模型")
     cmd_onnx = [
-        "od-benchmark",
+        "odb",
         "benchmark",
         "--all",
         "--format",
@@ -174,13 +174,13 @@ def example_6_batch_script():
 echo "======================================"
 echo "步骤 1: 导出所有模型为 ONNX 格式"
 echo "======================================"
-od-benchmark export --all-models --format onnx
+odb export --all-models --format onnx
 
 echo ""
 echo "======================================"
 echo "步骤 2: 测试所有 ONNX 模型"
 echo "======================================"
-od-benchmark benchmark --all --format onnx --num-images 100
+odb benchmark --all --format onnx --num-images 100
 
 echo ""
 echo "======================================"
@@ -202,7 +202,7 @@ def example_7_different_confidence():
 
     print("\n低阈值（完整 mAP 评估）:")
     cmd1 = [
-        "od-benchmark",
+        "odb",
         "benchmark",
         "--model",
         "yolov8n.onnx",
@@ -219,7 +219,7 @@ def example_7_different_confidence():
 
     print("\n中阈值（可视化友好）:")
     cmd2 = [
-        "od-benchmark",
+        "odb",
         "benchmark",
         "--model",
         "yolov8n.onnx",
@@ -237,7 +237,7 @@ def example_7_different_confidence():
 
     print("\n高阈值（仅高置信度检测）:")
     cmd3 = [
-        "od-benchmark",
+        "odb",
         "benchmark",
         "--model",
         "yolov8n.onnx",
@@ -275,7 +275,7 @@ def run_examples():
     print("""
 1. 导出 ONNX 模型:
    - 首次使用前，必须先导出 ONNX 模型
-   - 运行: od-benchmark export --all-models --format onnx
+   - 运行: odb export --all-models --format onnx
    - ONNX 模型保存在 models_export/ 目录
 
 2. 格式说明:
@@ -302,7 +302,7 @@ def run_examples():
     print("=" * 80)
     print("""
 错误: ONNX 模型目录不存在: models_export
-解决: 先运行 'od-benchmark export --all-models --format onnx'
+解决: 先运行 'odb export --all-models --format onnx'
 
 错误: 在 models_export 中未找到 ONNX 模型
 解决: 检查 models_export/ 目录，或重新导出模型

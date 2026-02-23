@@ -4,7 +4,8 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+import os
 import numpy as np
 
 
@@ -122,14 +123,76 @@ class BaseModel(ABC):
         Returns:
             实际使用的设备字符串
         """
-        if device != "auto":
-            return device
-
         import torch
 
-        if torch.cuda.is_available():
-            return "cuda"
-        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-            return "mps"
+        selected_device = device
+        fallback_reason = None
+
+        if device != "auto":
+            # 用户明确指定了设备
+            if device == "mps":
+                # 检查 MPS 是否可用
+                if (
+                    not hasattr(torch.backends, "mps")
+                    or not torch.backends.mps.is_available()
+                ):
+                    fallback_reason = "MPS 不可用（非 Apple Silicon 设备）"
+                    selected_device = "cpu"
+                elif os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK") != "1":
+                    fallback_reason = "PYTORCH_ENABLE_MPS_FALLBACK 未设置"
+                    selected_device = "cpu"
         else:
-            return "cpu"
+            # 自动选择设备
+            if torch.cuda.is_available():
+                selected_device = "cuda"
+            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                # 检查环境变量
+                if os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK") == "1":
+                    selected_device = "mps"
+                else:
+                    fallback_reason = (
+                        "PYTORCH_ENABLE_MPS_FALLBACK 未设置，使用 CPU 以确保兼容性"
+                    )
+                    selected_device = "cpu"
+            else:
+                selected_device = "cpu"
+
+        # 打印设备信息
+        self._print_device_info(device, selected_device, fallback_reason)
+
+        return selected_device
+
+    def _print_device_info(
+        self,
+        requested_device: str,
+        actual_device: str,
+        fallback_reason: Optional[str] = None,
+    ):
+        """打印设备选择信息.
+
+        Args:
+            requested_device: 用户请求的设备
+            actual_device: 实际使用的设备
+            fallback_reason: 回退原因（如果有）
+        """
+        print(f"\n🖥️  推理设备信息:")
+        print(f"   请求设备: {requested_device}")
+        print(f"   实际设备: {actual_device}")
+
+        if fallback_reason:
+            print(f"   ⚠️  设备回退原因: {fallback_reason}")
+            if actual_device == "cpu" and "MPS" in fallback_reason:
+                print(f"   💡 提示: Apple Silicon 的 MPS 需要设置环境变量才能使用")
+                print(f"      运行: export PYTORCH_ENABLE_MPS_FALLBACK=1")
+                print(f"      然后: od-benchmark --device mps ...")
+
+        if actual_device == "cuda":
+            import torch
+
+            print(f"   ✅ 使用 NVIDIA GPU 加速")
+        elif actual_device == "mps":
+            print(f"   ✅ 使用 Apple Silicon GPU 加速")
+            print(f"   ⚠️  注意: 部分操作可能回退到 CPU")
+        else:
+            print(f"   📝 使用 CPU 推理")
+        print()

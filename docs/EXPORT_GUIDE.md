@@ -14,32 +14,32 @@
 
 ```bash
 # 基本导出
-od-benchmark export --model models_cache/yolov8n.pt --format onnx
+odb export --model models_cache/yolov8n.pt --format onnx
 
 # 指定输入尺寸
-od-benchmark export --model models_cache/yolov8n.pt --input-size 640 640
+odb export --model models_cache/yolov8n.pt --input-size 640 640
 
 # 动态输入尺寸
-od-benchmark export --model models_cache/yolov8n.pt --dynamic
+odb export --model models_cache/yolov8n.pt --dynamic
 ```
 
 ### 导出为 TensorRT
 
 ```bash
 # 基本导出（需要 NVIDIA GPU）
-od-benchmark export --model models_cache/yolov8n.pt --format tensorrt --device 0
+odb export --model models_cache/yolov8n.pt --format tensorrt --device 0
 
 # FP16 精度（推荐）
-od-benchmark export --model models_cache/yolov8n.pt --format tensorrt --fp16
+odb export --model models_cache/yolov8n.pt --format tensorrt --fp16
 
 # INT8 量化（需要校准数据）
-od-benchmark export --model models_cache/yolov8n.pt --format tensorrt --int8
+odb export --model models_cache/yolov8n.pt --format tensorrt --int8
 ```
 
 ### 导出所有格式
 
 ```bash
-od-benchmark export --model models_cache/yolov8n.pt --format all
+odb export --model models_cache/yolov8n.pt --format all
 ```
 
 ## 命令参数详解
@@ -79,7 +79,7 @@ od-benchmark export --model models_cache/yolov8n.pt --format all
 ### 示例 1: 导出 ONNX 用于 CPU 推理
 
 ```bash
-od-benchmark export \
+odb export \
   --model models_cache/yolov8n.pt \
   --format onnx \
   --input-size 640 640 \
@@ -95,7 +95,7 @@ od-benchmark export \
 适用于输入图像尺寸不固定的场景：
 
 ```bash
-od-benchmark export \
+odb export \
   --model models_cache/yolov8n.pt \
   --format onnx \
   --dynamic \
@@ -107,7 +107,7 @@ od-benchmark export \
 适用于 NVIDIA GPU 高性能推理：
 
 ```bash
-od-benchmark export \
+odb export \
   --model models_cache/yolov8n.pt \
   --format tensorrt \
   --device 0 \
@@ -127,7 +127,7 @@ MODELS=("yolov8n" "yolov8s" "yolov8m")
 
 for model in "${MODELS[@]}"; do
     echo "导出 $model..."
-    od-benchmark export \
+    odb export \
         --model "models_cache/${model}.pt" \
         --format onnx \
         --input-size 640 640
@@ -138,10 +138,10 @@ done
 
 ```bash
 # 导出 320x320（移动端）
-od-benchmark export --model yolov8n.pt --input-size 320 320 --output-dir models_export/mobile
+odb export --model yolov8n.pt --input-size 320 320 --output-dir models_export/mobile
 
 # 导出 1280x1280（高精度）
-od-benchmark export --model yolov8n.pt --input-size 1280 1280 --output-dir models_export/hd
+odb export --model yolov8n.pt --input-size 1280 1280 --output-dir models_export/hd
 ```
 
 ## 输出文件
@@ -279,7 +279,7 @@ pip install ultralytics tensorrt
 
 A: 更新 opset 版本或简化模型：
 ```bash
-od-benchmark export --model yolov8n.pt --simplify
+odb export --model yolov8n.pt --simplify
 ```
 
 ### Q: TensorRT 导出失败

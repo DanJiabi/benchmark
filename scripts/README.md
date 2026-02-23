@@ -1,6 +1,6 @@
 # Scripts Directory
 
-This directory contains utility scripts for the od-benchmark package.
+This directory contains utility scripts for the odb package.
 
 ## Available Scripts
 
@@ -45,7 +45,7 @@ python scripts/download_weights.py --check-only
 
 ### 2. test_installation.py
 
-Verify that the od-benchmark package is correctly installed.
+Verify that the odb package is correctly installed.
 
 #### Usage
 
@@ -85,8 +85,8 @@ Testing Model Creation
 ============================================================
 Testing CLI
 ============================================================
-✅ od-benchmark --help works
-✅ od-benchmark benchmark --help works
+✅ odb --help works
+✅ odb benchmark --help works
 
 ============================================================
 Test Summary
@@ -119,7 +119,7 @@ python -m scripts test_installation
 
 ## Script Requirements
 
-All scripts require the od-benchmark package to be installed:
+All scripts require the odb package to be installed:
 
 ```bash
 # Install in editable mode
@@ -141,7 +141,7 @@ When adding new scripts to this directory:
 
 1. Make the script executable (optional):
    ```bash
-   chmod +x scripts/your_script.py
+   chmodb +x scripts/your_script.py
    ```
 
 2. Add a shebang line:
